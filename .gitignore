@@ -1,0 +1,67 @@
+
+# ==========================================
+# PYTHON
+# ==========================================
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Entorns virtuals
+.venv/
+venv/
+env/
+
+# ==========================================
+# FRONTEND - REACT / VITE
+# ==========================================
+
+node_modules/
+dist/
+.vite/
+
+# ==========================================
+# VARIABLES D'ENTORN I CREDENCIALS
+# ==========================================
+
+.env
+.env.*
+!.env.example
+
+# ==========================================
+# RESULTATS I FITXERS GENERATS
+# ==========================================
+
+# Resultats de simulacions generats
+Results/*
+
+# Permet conservar un fitxer README dins de Results
+!Results/README.md
+
+# Fitxers temporals
+*.tmp
+*.temp
+*.log
+
+# ==========================================
+# EDITORS
+# ==========================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==========================================
+# SISTEMA OPERATIU
+# ==========================================
+
+.DS_Store
+Thumbs.db
+Desktop.ini
