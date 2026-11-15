@@ -2,9 +2,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import SiteLayout from "./components/SiteLayout";
 import DataStartPage from "./pages/DataStartPage";
+import CommunityPage from "./pages/CommunityPage";
 import CommunityResultsPage from "./pages/CommunityResultsPage";
 import CompareResultsPage from "./pages/CompareResultsPage";
 import ProsumerResultsPage from "./pages/ProsumerResultsPage";
+
+import { WizardProvider } from "./context/WizardContext";
 
 function Placeholder({ title }) {
   return <div className="page-width placeholder">
@@ -14,10 +17,10 @@ function Placeholder({ title }) {
 }
 
 export default function App() {
-  return <Routes><Route element={<SiteLayout />}>
+  return <WizardProvider><Routes><Route element={<SiteLayout />}>
     <Route path="/" element={<Placeholder title="Home" />} />
     <Route path="/configure/data" element={<DataStartPage />} />
-    <Route path="/configure/community" element={<Placeholder title="Community" />} />
+    <Route path="/configure/community" element={<CommunityPage/>} />
     <Route path="/configure/prosumers" element={<Placeholder title="Prosumers" />} />
     <Route path="/configure/alternatives" element={<Placeholder title="Alternatives" />} />
     <Route path="/configure/review" element={<Placeholder title="Review" />} />
@@ -29,5 +32,5 @@ export default function App() {
     <Route path="/examples" element={<Placeholder title="Examples" />} />
     <Route path="/contact" element={<Placeholder title="Contact" />} />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Route></Routes>;
+  </Route></Routes></WizardProvider>;
 }

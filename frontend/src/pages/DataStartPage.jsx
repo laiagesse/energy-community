@@ -1,32 +1,28 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FileUp, Download, CheckCircle2 } from "lucide-react";
+import { useWizard } from "../context/WizardContext";
+import { SectionCard, DataFooter, DataHeader } from "../components/WizardUI";
+import { CheckCircle2, Download, FileUp } from "lucide-react";
 import StepProgress from "../components/StepProgress";
 
 export default function DataStartPage() {
-  const [source, setSource] = useState("example");
-  const [solarFile, setSolarFile] = useState(null);
-  const [windFile, setWindFile] = useState(null);
-  const navigate = useNavigate();
-
+  const { data, setData } = useWizard();
+  const [source, setSource] = useState(data.source || "example");
+  const [solarFile, setSolarFile] = useState(data.solarFile || null);
+  const [windFile, setWindFile] = useState(data.windFile || null);
+  
   const chooseFile = (kind, file) => {
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      window.alert("The file exceeds the 20 MB limit.");
-      return;
-    }
-    if (kind === "solar") setSolarFile(file);
-    else setWindFile(file);
+    if (file.size > 20 * 1024 * 1024) { window.alert("The file exceeds the 20 MB limit."); return; }
+    if (!file.name.toLowerCase().endsWith(".csv")) { window.alert("Please select a CSV file."); return; }
+    kind === "solar" ? setSolarFile(file) : setWindFile(file);
   };
-
-  const canContinue = source === "example" || (!!solarFile && !!windFile);
-
-  return <main className="page-width data-page">
-    <div className="page-intro">
-      <span className="eyebrow">CONFIGURE SIMULATION · STEP 1 OF 6</span>
-      <h1>Initial Data</h1>
-      <p>Choose the solar and wind generation data you want to use for the simulation.</p>
-    </div>
+  
+  const count = Number(!!solarFile) + Number(!!windFile);
+  const canContinue = source === "example" || count === 2;
+  const next = () => { setData({ source, solarFile, windFile }); };
+  
+  return <main className="page-width">
+    <DataHeader step={1} title="Energy Generation Data" description="Choose which solar and wind generation data you want to use for the simulation."/>
     <StepProgress current={1} />
 
     <div className="source-options">
@@ -34,8 +30,8 @@ export default function DataStartPage() {
         <span className="radio-mark">{source === "example" && <span />}</span>
         <span className="source-option-content">
           <strong>Try with example data</strong>
-          <span>Barcelona · 1 year of hourly data. Ideal for exploring the tool.</span>
-          <em>Recommended</em>
+          <span>Explore the simulation using predefined solar and wind production profiles.</span>
+          <span>Barcelona · 1 year of hourly data.</span>
         </span>
       </button>
       <button type="button" className={`source-option ${source === "custom" ? "selected" : ""}`} onClick={() => setSource("custom")}>
@@ -48,33 +44,19 @@ export default function DataStartPage() {
       </button>
     </div>
 
-    {source === "custom" && <section className="upload-panel">
-      <div className="upload-panel-heading">
-        <div><h2>Generation Files</h2><p>{Number(!!solarFile) + Number(!!windFile)} of 2 files uploaded</p></div>
-        <span className="upload-limit">CSV · max. 20 MB</span>
-      </div>
-      <UploadRow title="Solar production (photovoltaic)" file={solarFile} onFile={f => chooseFile("solar", f)} />
-      <UploadRow title="Wind production" file={windFile} onFile={f => chooseFile("wind", f)} />
+    {source === "custom" && <SectionCard title="Generation data files" description={`${count} of 2 files uploaded`} className="upload-panel-react">
+      <UploadRow title="Solar photovoltaic production" file={solarFile} onFile={file => chooseFile("solar", file)} />
+      <UploadRow title="Wind power production" file={windFile} onFile={file => chooseFile("wind", file)} />
       <div className="format-info">
-        <h3>File Format</h3>
+        <h3>File format</h3>
         <p>Exactly two columns, separated by a semicolon.</p>
         <div className="format-grid">
-          <div><strong>Columns</strong><span>1) Datetime · format YYYY-MM-DD HH:MM:SS<br/>2) Value · energy in kWh per installed kW</span></div>
-          <code>Datetime;Value<br/>2025-01-01 00:00:00;0.142</code>
+          <div><strong>Columns</strong><span>1) Datetime · format YYYY-MM-DD HH:MM:SS<br/>2) Value · energy in kWh per installed kW</span></div><code>Datetime;Value<br/>2025-01-01 00:00:00;0.142</code></div>
         </div>
-      </div>
-    </section>}
+    </SectionCard>}
 
-    <footer className="wizard-footer">
-      <button type="button" className="button-secondary" disabled>Previous</button>
-      <div className="wizard-status">
-        <strong>{source === "example" ? "Example data selected" : `${Number(!!solarFile) + Number(!!windFile)} of 2 files uploaded`}</strong>
-        <span>{source === "example" ? "Next step: Community" : canContinue ? "Files ready to continue" : "Upload both files to continue"}</span>
-      </div>
-      <button type="button" className="button-primary" disabled={!canContinue} onClick={() => navigate("/configure/community")}>Next <span>→</span></button>
-    </footer>
-    <div className="prototype-note">This screen reproduces the “1a · Data · Example” mockup. CSV validation and processing will be connected to the backend once it is ready.</div>
-  </main>;
+    <DataFooter step={1} status={source === "example" ? "Example data selected" : `${count} of 2 files uploaded`} detail={source === "example" ? "Next step: Community" : canContinue ? "Files ready to continue" : "Upload both files to continue"} nextTo="/configure/community" disabled={!canContinue} onNext={next} />
+  </main>
 }
 
 function UploadRow({ title, file, onFile }) {
