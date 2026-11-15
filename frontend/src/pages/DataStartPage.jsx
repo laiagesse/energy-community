@@ -55,7 +55,13 @@ export default function DataStartPage() {
         </div>
     </SectionCard>}
 
-    <DataFooter step={1} status={source === "example" ? "Example data selected" : `${count} of 2 files uploaded`} detail={source === "example" ? "Next step: Community" : canContinue ? "Files ready to continue" : "Upload both files to continue"} nextTo="/configure/community" disabled={!canContinue} onNext={next} />
+    <DataFooter 
+      step={1} 
+      status={source === "example" ? "Example data selected" : `${count} of 2 files uploaded`} 
+      detail={source === "example" ? "Next step: Community" : canContinue ? "Files ready to continue" : "Upload both files to continue"} 
+      nextTo="/configure/community" 
+      disabled={!canContinue} 
+      onNext={next} />
   </main>
 }
 

@@ -8,10 +8,10 @@ const initialProsumer = (id, alpha, consumption, pv, wind, battery, tariff) => (
 export function WizardProvider({ children }) {
   const [data, setData] = useState({ source: "example", solarFile: null, windFile: null });
   const [community, setCommunity] = useState({
-    pvCost: "1000", windCost: "2000", batteryCost: "800",
-    pvLife: "25", windLife: "30", batteryLife: "10",
-    communityPv: "0", communityWind: "1.58", communityBattery: "0",
-    batteryChargePrice: "0.1677", p2pRule: "market",
+    pvCost: "", windCost: "", batteryCost: "",
+    pvLife: "", windLife: "", batteryLife: "",
+    communityPv: "", communityWind: "", communityBattery: "",
+    batteryChargePrice: "", p2pRule: "market",
   });
   const [prosumers, setProsumers] = useState([
     initialProsumer("P-01", "0.200", "Working couple", "0.40", "0.09", "0", "Dynamic"),
