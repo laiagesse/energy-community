@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useWizard } from "../context/WizardContext";
-import { SectionCard, DataFooter, DataHeader } from "../components/WizardUI";
-import { CheckCircle2, Download, FileUp } from "lucide-react";
+import { SectionCard, DataFooter, DataHeader, UploadRow, RadioCard } from "../components/WizardUI";
 import StepProgress from "../components/StepProgress";
 
 export default function DataStartPage() {
@@ -26,22 +25,27 @@ export default function DataStartPage() {
     <StepProgress current={1} />
 
     <div className="source-options">
-      <button type="button" className={`source-option ${source === "example" ? "selected" : ""}`} onClick={() => setSource("example")}>
-        <span className="radio-mark">{source === "example" && <span />}</span>
-        <span className="source-option-content">
-          <strong>Try with example data</strong>
-          <span>Explore the simulation using predefined solar and wind production profiles.</span>
-          <span>Barcelona · 1 year of hourly data.</span>
-        </span>
-      </button>
-      <button type="button" className={`source-option ${source === "custom" ? "selected" : ""}`} onClick={() => setSource("custom")}>
-        <span className="radio-mark">{source === "custom" && <span />}</span>
-        <span className="source-option-content">
-          <strong>Upload your own data</strong>
-          <span>Upload the solar and wind production data for your location in CSV format.</span>
-          <em>CSV · max. 20 MB</em>
-        </span>
-      </button>
+      <RadioCard
+        name="dataSource"
+        value="example"
+        selected={source === "example"}
+        onChange={setSource}
+        title="Try with example data"
+        description="Explore the simulation using predefined solar and wind production profiles."
+        note="Barcelona · 1 year of hourly data."
+      >
+      </RadioCard>
+
+      <RadioCard
+        name="dataSource"
+        value="custom"
+        selected={source === "custom"}
+        onChange={setSource}
+        title="Upload your own data"
+        description="Upload the solar and wind production data for your location in CSV format."
+        note="CSV · max. 20 MB"
+      >
+      </RadioCard>
     </div>
 
     {source === "custom" && <SectionCard title="Generation data files" description={`${count} of 2 files uploaded`} className="upload-panel-react">
@@ -63,14 +67,4 @@ export default function DataStartPage() {
       disabled={!canContinue} 
       onNext={next} />
   </main>
-}
-
-function UploadRow({ title, file, onFile }) {
-  return <div className="upload-row">
-    <div className="upload-symbol"><FileUp size={19}/></div>
-    <div className="upload-file-label"><strong>{title}</strong><span>{file ? file.name : "No file uploaded · pending"}</span></div>
-    {file && <CheckCircle2 className="upload-check" size={18}/>}
-    <label className="button-secondary upload-button">Upload file<input type="file" accept=".csv,text/csv" onChange={e => onFile(e.target.files?.[0])}/></label>
-    <button type="button" className="button-template" onClick={() => window.alert("The CSV template will be available once the final backend format has been defined.")}><Download size={14}/> Download template</button>
-  </div>;
 }

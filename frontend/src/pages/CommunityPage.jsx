@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useWizard } from "../context/WizardContext";
-import {Field, SectionCard, DataFooter, DataHeader,} from "../components/WizardUI";
+import {Field, SectionCard, DataFooter, DataHeader, RadioCard} from "../components/WizardUI";
 import StepProgress from "../components/StepProgress";
 
 const groups = [
@@ -152,7 +152,7 @@ export default function CommunityPage() {
         ))}
         <SectionCard
           title="Battery strategy"
-          description="Set the maximum electricity price at which the battery can charge from the grid."
+          description="Maximum electricity price at which the battery can charge from the grid."
         >
           <div className="wizard-fields one-col">
             <Field
@@ -174,26 +174,15 @@ export default function CommunityPage() {
       >
         <div className="rule-grid">
           {rules.map((rule) => (
-            <label
+            <RadioCard
               key={rule.id}
-              className={`rule-option ${
-                form.p2pRule === rule.id
-                  ? "selected"
-                  : ""
-              }`}
-            >
-              <input
-                type="radio"
-                name="p2pRule"
-                checked={form.p2pRule === rule.id}
-                onChange={() => update("p2pRule", rule.id)}
-              />
-
-              <span>
-                <strong>{rule.title}</strong>
-                <small>{rule.description}</small>
-              </span>
-            </label>
+              name="p2pRule"
+              value={rule.id}
+              selected={form.p2pRule === rule.id}
+              onChange={(value) => update("p2pRule", value)}
+              title={rule.title}
+              description={rule.description}
+            />
           ))}
         </div>
       </SectionCard>
