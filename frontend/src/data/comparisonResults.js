@@ -2,38 +2,29 @@
 export const initialScenarios = [
   {
     id: "scenario-a",
-    label: "Scenario A",
-    code: "SIM-A",
+    label: "Experiment 1",
     color: "#3e7b48",
     marker: "●"
   },
   {
     id: "scenario-b",
-    label: "Scenario B",
-    code: "SIM-B",
+    label: "Experiment 2",
     color: "#b89b62",
     marker: "■"
   },
   {
     id: "scenario-c",
-    label: "Scenario C",
-    code: "SIM-C",
+    label: "Experiment 3",
     color: "#8b744b",
     marker: "◆"
   }
 ];
 
-export const scenarioOptions = [
-  { label: "Scenario A", code: "SIM-A" },
-  { label: "Scenario B", code: "SIM-B" },
-  { label: "Scenario C", code: "SIM-C" }
-];
-
 export const defaultSelectedIndicators = [
-  "monthlySaving",
-  "billReduction",
   "selfSufficiency",
+  "selfConsumption",
   "gridDependency",
+  "totalSaved",
   "avoidedEmissions",
   "fairness"
 ];
@@ -43,37 +34,25 @@ export const dimensions = [
     id: "economic",
     label: "Economic",
     color: "#b89b62",
-    icon: "▣",
+    icon: "",
     indicators: [
       {
-        id: "monthlySaving",
-        label: "Monthly savings per participant (€)",
-        direction: "higher",
-        values: [28.5, 34.2, 31.8]
-      },
-      {
-        id: "finalBill",
-        label: "Final monthly bill (€)",
+        id: "totalFinalBill",
+        label: "Community total final bill (€)",
         direction: "lower",
-        values: [null, null, null]
+        format: "currency"
       },
       {
-        id: "billReduction",
-        label: "Bill reduction (%)",
+        id: "totalSaved",
+        label: "Community total saved (€)",
         direction: "higher",
-        values: [24, 29, 27]
+        format: "currency"
       },
       {
-        id: "annualProfit",
-        label: "Annual investment return (%)",
-        direction: "higher",
-        values: [null, null, null]
-      },
-      {
-        id: "investmentPayback",
-        label: "Investment payback period (years)",
-        direction: "lower",
-        values: [null, null, null]
+        id: "baselinePovertyHelp",
+        label: "Baseline poverty help",
+        direction: "none",
+        format: "number"
       }
     ]
   },
@@ -81,31 +60,31 @@ export const dimensions = [
     id: "energy",
     label: "Energy",
     color: "#3e7b48",
-    icon: "ϟ",
+    icon: "",
     indicators: [
       {
         id: "selfSufficiency",
         label: "Community energy self-sufficiency (%)",
         direction: "higher",
-        values: [62, 71, 68]
+        format: "percentage"
       },
       {
         id: "selfConsumption",
         label: "Community self-consumption (%)",
         direction: "higher",
-        values: [null, null, null]
+        format: "percentage"
       },
       {
         id: "gridDependency",
-        label: "Grid dependency (%)",
+        label: "Community grid dependency (%)",
         direction: "lower",
-        values: [38, 29, 32]
+        format: "percentage"
       },
       {
         id: "selfSufficiencyGap",
-        label: "Self-sufficiency gap between participants",
+        label: "Self-sufficiency gap between prosumers",
         direction: "lower",
-        values: [null, null, null]
+        format: "percentage"
       }
     ]
   },
@@ -113,25 +92,25 @@ export const dimensions = [
     id: "environmental",
     label: "Environmental",
     color: "#3d5e80",
-    icon: "◈",
+    icon: "",
     indicators: [
       {
         id: "avoidedEmissions",
         label: "Annual avoided emissions (kg CO₂ eq)",
         direction: "higher",
-        values: [8400, 10200, 9600]
+        format: "emissions"
       },
       {
         id: "environmentalImpact",
-        label: "Environmental impact · No data",
+        label: "Environmental impact (%)",
         direction: "none",
-        values: [null, null, null]
+        format: "percentage"
       },
       {
-        id: "carbonPayback",
-        label: "Carbon debt payback period (years)",
+        id: "carbonPaybackTime",
+        label: "Carbon payback time (years)",
         direction: "lower",
-        values: [null, null, null]
+        format: "years"
       }
     ]
   },
@@ -139,19 +118,13 @@ export const dimensions = [
     id: "social",
     label: "Social",
     color: "#8a7799",
-    icon: "♙",
+    icon: "",
     indicators: [
       {
         id: "fairness",
         label: "Fairness index",
         direction: "closestOne",
-        values: [0.94, 0.89, 0.97]
-      },
-      {
-        id: "benefitDifference",
-        label: "Self-sufficiency gap between participants",
-        direction: "lower",
-        values: [null, null, null]
+        format: "index"
       }
     ]
   }
