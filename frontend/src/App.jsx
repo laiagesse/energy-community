@@ -1,8 +1,8 @@
-
 import { Navigate, Route, Routes } from "react-router-dom";
 import SiteLayout from "./components/SiteLayout";
 import DataStartPage from "./pages/DataStartPage";
 import CommunityPage from "./pages/CommunityPage";
+import ProsumersPage, { ProsumerFormPage } from "./pages/ProsumersPage";
 import CommunityResultsPage from "./pages/CommunityResultsPage";
 import CompareResultsPage from "./pages/CompareResultsPage";
 import ProsumerResultsPage from "./pages/ProsumerResultsPage";
@@ -21,7 +21,9 @@ export default function App() {
     <Route path="/" element={<Placeholder title="Home" />} />
     <Route path="/configure/data" element={<DataStartPage />} />
     <Route path="/configure/community" element={<CommunityPage/>} />
-    <Route path="/configure/prosumers" element={<Placeholder title="Prosumers" />} />
+    <Route path="/configure/prosumers" element={<ProsumersPage/>}/>
+    <Route path="/configure/prosumers/new" element={<ProsumerFormPage/>}/>
+    <Route path="/configure/prosumers/:id" element={<ProsumerFormPage/>}/>
     <Route path="/configure/alternatives" element={<Placeholder title="Alternatives" />} />
     <Route path="/configure/review" element={<Placeholder title="Review" />} />
     <Route path="/results" element={<Placeholder title="Results" />} />

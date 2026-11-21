@@ -1,3 +1,5 @@
+import { formatKpiValue } from "../utils/formatKpi";
+
 export default function KpiTable({ columns, rows, label }) {
   return (
     <div className="kpi-table-scroll">
@@ -9,7 +11,11 @@ export default function KpiTable({ columns, rows, label }) {
           {rows.map(row => (
             <tr key={row.prosumer}>
               {columns.map((column, index) => (
-                <td key={column.key} className={index === 0 ? "prosumer-name-cell" : ""}>{row[column.key]}</td>
+                <td key={column.key} className={index === 0 ? "prosumer-name-cell" : ""}>
+                  {index === 0
+                    ? row[column.key]
+                    : formatKpiValue(row[column.key], column.key)}
+                </td>
               ))}
             </tr>
           ))}

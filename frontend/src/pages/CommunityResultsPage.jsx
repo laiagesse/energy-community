@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ResultsTabs from "../components/ResultsTabs";
 import ResultsPageHeader from "../components/ResultsPageHeader";
 import SectionHeading from "../components/SectionHeading";
 import DonutChart from "../components/DonutChart";
-import { monthlyBills, monthlyCoverage } from "../data/communityResults";
 import InfoButton from "../components/InfoButton";
+import { monthlyBills, monthlyCoverage } from "../data/communityResults";
 
 const colors = {
   green: "#3e7b48",
@@ -43,15 +43,147 @@ function MetricCard({ label, value, detail, info}) {
 }
 
 export default function CommunityResultsPage() {
-  const [period, setPeriod] = useState("Annual");
-  const [alternative, setAlternative] = useState("Current installation");
+  const [period, setPeriod] = useState("winter");
+  const [alternative, setAlternative] = useState("");
+  const [experiments, setExperiments] = useState([]);
+  const [communityData, setCommunityData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [hoveredCoverage, setHoveredCoverage] = useState(null);
+  const [coverageMousePosition, setCoverageMousePosition] = useState({
+    x: 0,
+    y: 0
+  });
+
+  // Load the available experiments for the selector.
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchExperiments = async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:8000/experiments");
+        if (!response.ok) {
+          throw new Error("Could not load the available experiments");
+        }
+
+        const data = await response.json();
+        if (cancelled) return;
+
+        const availableExperiments = data.experiments ?? [];
+        setExperiments(availableExperiments);
+
+        if (availableExperiments.length > 0) {
+          setAlternative(current =>
+            availableExperiments.some(item => item.id === current)
+              ? current
+              : availableExperiments[0].id
+          );
+        } else {
+          setLoading(false);
+          setError("No experiments are available.");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message);
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchExperiments();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load the community KPIs whenever the selected experiment changes.
+  useEffect(() => {
+    if (!alternative) return;
+
+    let cancelled = false;
+
+    const fetchCommunityResults = async () => {
+      setLoading(true);
+      setError(null);
+      setCommunityData(null);
+
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:8000/experiments/${alternative}/kpis/community`
+        );
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.detail || "Could not load community results");
+        }
+
+        const data = await response.json();
+        if (!cancelled) {
+          setCommunityData(data);
+          if (data.periods?.length) {
+            setPeriod(current =>
+              data.periods.some(item => item.id === current)
+                ? current
+                : data.periods[0].id
+            );
+          }
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchCommunityResults();
+    return () => {
+      cancelled = true;
+    };
+  }, [alternative]);
+
+  const periodType = communityData?.period_type ?? null;
+  const periods = communityData?.periods ?? [];
+  const selectedPeriodData = periods.find(
+    item => item.id === period
+  );
+  const selectedPeriodLabel = selectedPeriodData?.label ?? "";
+  const kpis = selectedPeriodData?.kpis ?? {};
 
   const scrollTo = id => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+
+  const ownResources = (kpis.selfSufficiency?.value ?? 0) * 100;
+  const grid = (kpis.gridDependency?.value ?? 0) * 100;
+  const p2p = 100 - ownResources - grid;
+  const coverageData = periods.map(item => {
+    const kpis = item.kpis ?? {};
+
+    const grid = (kpis.gridDependency?.value ?? 0) * 100;
+    const own = (kpis.selfSufficiency?.value ?? 0) * 100;
+    const p2p = 100 - grid - own;
+
+    return {
+      id: item.id,
+      label: item.label,
+      grid,
+      own,
+      p2p
+    };
+  });
+
   return (
     <main className="page-width">
-      <ResultsPageHeader period={period} onPeriodChange={setPeriod} alternative={alternative} onAlternativeChange={setAlternative} />
-      <ResultsTabs />
+      <ResultsPageHeader
+        period={period}
+        onPeriodChange={setPeriod}
+        alternative={alternative}
+        onAlternativeChange={setAlternative}
+        periods={periods}
+        experiments={experiments}
+      /><ResultsTabs />
+
+      {loading && <p className="results-status">Loading experiment results...</p>}
+      {error && <p className="results-error" role="alert">{error}</p>}
 
       <div className="jump-links">
         <span>Go to</span>
@@ -70,16 +202,21 @@ export default function CommunityResultsPage() {
         ))}
       </div>
 
-      <section className="summary-grid" aria-label="Community summary">
-        <MetricCard label="Total savings" value="1,474 €" detail="Annual community savings"
+      <section className="summary-grid">
+        <MetricCard label="Total savings" 
+          value={kpis.totalSaved ? `${kpis.totalSaved.value.toFixed(0)} €` : "—"}
+          //detail={`${selectedPeriodLabel} community savings`}
+          detail= "Monthly community savings"
           info={
             <>
-              <p>Total annual savings achieved by the energy community compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
+              <p>Total savings achieved by the energy community compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
               <p>Higher values mean greater economic benefits.</p>
             </>
           }
         />
-        <MetricCard label="Self-sufficiency" value="35 %" detail="Consumption covered by own resources" 
+        <MetricCard label="Self-sufficiency" 
+          value={kpis.selfSufficiency ? `${(kpis.selfSufficiency.value * 100).toFixed(1)} %` : "—"}
+          detail="Consumption covered by own resources" 
           info={
             <>
               <p>Share of total community demand covered by locally generated energy, either consumed directly or stored in batteries.</p>
@@ -88,7 +225,10 @@ export default function CommunityResultsPage() {
             </>
           }
         />
-        <MetricCard label="Fairness" value="0.999" detail="Distribution equity" 
+        <MetricCard 
+          label="Fairness" 
+          value={kpis.fairness ? kpis.fairness.value.toFixed(3) : "—"} 
+          detail="Distribution equity" 
           info={
             <>
               <p>Measures how evenly the economic savings of each community member are distributed in relation to the amount of energy each one generates.</p>
@@ -96,7 +236,10 @@ export default function CommunityResultsPage() {
             </>
           }
         />
-        <MetricCard label="Avoided emissions" value="2,158 kg" detail="Net annual CO₂ reduction" 
+        <MetricCard 
+          label="Avoided emissions" 
+          value={kpis.avoidedEmissions ? `${kpis.avoidedEmissions.value.toFixed(0)} kg` : "—"}
+          detail="Net annual CO₂ reduction" 
           info={
             <>
               <p>Estimates the net annual CO₂-equivalent emissions avoided by the community.</p>
@@ -114,7 +257,7 @@ export default function CommunityResultsPage() {
             <div className="card-heading-row">
               <div>
                 <h3>Community electricity consumption</h3>
-                <p className="card-subtitle">Annual consumption by energy source</p>
+                <p className="card-subtitle">{`${selectedPeriodLabel} consumption coverage by energy source`}</p>
               </div>
               <InfoButton
                 content={
@@ -125,43 +268,64 @@ export default function CommunityResultsPage() {
                 }
               />
             </div>
+
             <div className="donut-card-content">
               <DonutChart
-                totalConsumption="12,450"
+                totalConsumption="-"
                 label="TOTAL kWh"
                 segments={[
                   {
                     label: "Own resources",
-                    value: 35,
-                    quantity: 4_357.5,
+                    value: ownResources,
+                    quantity: 0,
                     color: colors.green
                   },
                   {
                     label: "Grid",
-                    value: 59,
-                    quantity: 7_345.5,
+                    value: grid,
+                    quantity: 0,
                     color: colors.red
                   },
                   {
                     label: "P2P exchange",
-                    value: 6,
-                    quantity: 747,
+                    value: p2p,
+                    quantity: 0,
                     color: colors.blue
                   }
                 ]}
               />
+
               <Legend items={[
-                { label: "Own resources", value: "35 %", color: colors.green },
-                { label: "Grid", value: "59 %", color: colors.red },
-                { label: "P2P exchange", value: "6 %", color: colors.blue }
+                {
+                  label: "Own resources",
+                  value: `${ownResources.toFixed(1)} %`,
+                  color: colors.green
+                },
+                {
+                  label: "Grid",
+                  value: `${grid.toFixed(1)} %`,
+                  color: colors.red
+                },
+                {
+                  label: "P2P exchange",
+                  value: `${p2p.toFixed(1)} %`,
+                  color: colors.blue
+                }
               ]} />
             </div>
+
           </article>
 
           <article className="result-card">
             <h3>Community direct self-consumption</h3>
-            <strong className="large-number">58 %</strong>
-            <div className="meter"><span style={{ width: "58%" }} /></div>
+            <strong className="large-number">
+              {kpis.selfConsumption?.value != null
+                ? `${(kpis.selfConsumption.value * 100).toFixed(1)} %`
+                : "—"}
+            </strong>
+            <div className="meter"><span style={{ width: kpis.selfConsumption?.value != null
+                ? `${(kpis.selfConsumption.value * 100).toFixed(1)}%`
+                : "—"} } /></div>
             <p className="card-description">Proportion of the community's total energy generation that is consumed immediately by its members, without being stored in the battery.</p>
           </article>
 
@@ -218,11 +382,10 @@ export default function CommunityResultsPage() {
         </article>
 
         </div>
-
         <article className="result-card chart-card">
           <div className="chart-heading">
             <div>
-              <h3>Monthly consumption coverage</h3>
+              <h3>{periodType === "month" ? "Monthly" : "Seasonal"} consumption coverage</h3>
               <p className="card-subtitle"></p>
             </div>
             <Legend items={[
@@ -231,15 +394,86 @@ export default function CommunityResultsPage() {
               { label: "P2P exchange", color: colors.blue }
             ]} />
           </div>
-          <div className="stacked-chart" role="img" aria-label="Monthly consumption coverage stacked bar chart">
-            {monthlyCoverage.map(month => (
-              <div className="stack-column" key={month.month}>
+          <div
+            className="stacked-chart"
+            role="img"
+            aria-label="Consumption coverage by period"
+          >
+            {coverageData.map(item => (
+              <div className="stack-column" key={item.id}>
                 <div className="stack-bars">
-                  <i style={{ height: `${month.p2p}%`, background: colors.blue }} />
-                  <i style={{ height: `${month.grid}%`, background: colors.red }} />
-                  <i style={{ height: `${month.own}%`, background: colors.green }} />
+
+                  <i
+                    style={{ height: `${item.p2p}%`, background: colors.blue }}
+                    onMouseEnter={() => setHoveredCoverage({
+                      periodId: item.id,
+                      label: "P2P exchange",
+                      value: item.p2p,
+                      color: colors.blue
+                    })}
+                    onMouseMove={event => {
+                      const rect = event.currentTarget.closest(".stack-column").getBoundingClientRect();
+                      setCoverageMousePosition({
+                        x: event.clientX - rect.left,
+                        y: event.clientY - rect.top
+                      });
+                    }}
+                    onMouseLeave={() => setHoveredCoverage(null)}
+                  />
+
+                  <i
+                    style={{ height: `${item.grid}%`, background: colors.red }}
+                    onMouseEnter={() => setHoveredCoverage({
+                      periodId: item.id,
+                      label: "Grid",
+                      value: item.grid,
+                      color: colors.red
+                    })}
+                    onMouseMove={event => {
+                      const rect = event.currentTarget.closest(".stack-column").getBoundingClientRect();
+                      setCoverageMousePosition({
+                        x: event.clientX - rect.left,
+                        y: event.clientY - rect.top
+                      });
+                    }}
+                    onMouseLeave={() => setHoveredCoverage(null)}
+                  />
+
+                  <i
+                    style={{ height: `${item.own}%`, background: colors.green }}
+                    onMouseEnter={() => setHoveredCoverage({
+                      periodId: item.id,
+                      label: "Own resources",
+                      value: item.own,
+                      color: colors.green
+                    })}
+                    onMouseMove={event => {
+                      const rect = event.currentTarget.closest(".stack-column").getBoundingClientRect();
+                      setCoverageMousePosition({
+                        x: event.clientX - rect.left,
+                        y: event.clientY - rect.top
+                      });
+                    }}
+                    onMouseLeave={() => setHoveredCoverage(null)}
+                  />
+
                 </div>
-                <span>{month.month}</span>
+
+                {hoveredCoverage?.periodId === item.id && (
+                  <div
+                    className="donut-tooltip"
+                    style={{
+                      "--tooltip-color": hoveredCoverage.color,
+                      left: `${coverageMousePosition.x}px`,
+                      top: `${coverageMousePosition.y}px`
+                    }}
+                  >
+                    <strong>{hoveredCoverage.label}</strong>
+                    <span>{hoveredCoverage.value.toFixed(1)} %</span>
+                  </div>
+                )}
+
+                <span>{item.label}</span>
               </div>
             ))}
           </div>
@@ -254,16 +488,24 @@ export default function CommunityResultsPage() {
               <h3>Total savings</h3>
               <InfoButton content={
                 <>
-                  <p>Total annual savings achieved by the energy community compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
+                  <p>Monthly savings achieved by the community compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
                   <p>Higher values mean greater economic benefits.</p>
                 </>
               } />
             </div>
-            <strong className="large-number">1,474 €</strong>
-            <p className="card-subtitle">Estimated annual economic savings</p>
+            <strong className="large-number">
+              {kpis.totalSaved?.value != null
+                ? `${kpis.totalSaved.value.toFixed(0)} €`
+                : "—"}
+            </strong>
+            <p className="card-subtitle">Estimated monthly economic savings</p>
             <hr />
             <p className="card-description">Equivalent to the baseline electricity costs of</p>
-            <strong className="households-number">2.3 average households</strong>
+            <strong className="households-number">
+              {kpis.baselinePovertyHelp?.value != null
+                ? `${kpis.baselinePovertyHelp.value.toFixed(1)} average households`
+                : "—"}
+            </strong>
           </article>
 
           <article className="result-card">
@@ -272,14 +514,18 @@ export default function CommunityResultsPage() {
             <InfoButton
               content={
                 <>
-                  <p>Represents the total annual net electricity cost of all community members, taking into account electricity purchases from the grid and through P2P exchanges.</p>
+                  <p>Represents the total monthly net electricity cost of all community members, taking into account electricity purchases from the grid and through P2P exchanges.</p>
                   <p>Revenues from surplus energy sold to the grid or through P2P exchanges are deducted from these costs.</p>
                 </>
               }
             />
             </div>
-            <strong className="large-number">{period === "Annual" ? "1,696 €" : "141 €"}</strong>
-            <p className="card-subtitle">{period === "Annual" ? "Total net electricity cost for the community per year" : "Total net electricity cost for the community per month"}</p>
+            <strong className="large-number">
+              {kpis.totalFinalBill?.value != null
+                ? `${kpis.totalFinalBill.value.toFixed(0)} €`
+                : "—"}
+            </strong>
+            <p className="card-subtitle">Total net electricity cost for the community per month</p>
           </article>
         </div>
 
@@ -340,7 +586,7 @@ export default function CommunityResultsPage() {
                 <h3>Annual return on investment</h3>
                 <InfoButton content="Indicates the annual return generated by the investment in the installations, expressed as a percentage of the total amount invested." />
               </div>
-              <strong className="large-number">5.1 %</strong>
+              <strong className="large-number">- %</strong>
               <p className="card-description">
                 Each year, you earn approximately this percentage of the amount invested.
               </p>
@@ -351,7 +597,7 @@ export default function CommunityResultsPage() {
                 <h3>Estimated investment payback</h3>
                 <InfoButton content="Estimates how many years are needed to recover the initial investment based on the annual return. It is calculated as 100 divided by the annual return percentage." />
               </div>
-              <strong className="large-number">≈ 20 years</strong>
+              <strong className="large-number">≈ - years</strong>
               <p className="card-description">
                 Estimate of the time needed to recover the initial investment based on the annual return.
               </p>
@@ -367,11 +613,19 @@ export default function CommunityResultsPage() {
         <div className="two-cards">
           <article className="result-card">
             <h3>Fairness (Fairness index)</h3>
-            <strong className="large-number">0.999</strong>
+            <strong className="large-number">
+              {kpis.fairness?.value != null
+                ? kpis.fairness.value.toFixed(3)
+                : "—"}
+            </strong>
           </article>
           <article className="result-card">
             <h3>Self-sufficiency gap</h3>
-            <strong className="large-number">12 pp</strong>
+            <strong className="large-number">
+              {kpis.selfSufficiencyGap?.value != null
+                ? `${(kpis.selfSufficiencyGap.value * 100).toFixed(1)} pp`
+                : "—"}
+            </strong>
             <p className="card-description">Between the most and least self-sufficient participant.</p>
           </article>
         </div>
@@ -383,17 +637,31 @@ export default function CommunityResultsPage() {
           <article className="result-card emissions-card">
             <div>
               <h3>Annual avoided emissions</h3>
-              <strong className="large-number">2,158</strong>
-              <p className="card-subtitle">kg CO₂ eq. per year</p>
+              <strong className="large-number">
+                {kpis.avoidedEmissions?.value != null
+                  ? `${kpis.avoidedEmissions.value.toFixed(0)} kg`
+                  : "—"}
+              </strong>
+              <p className="card-subtitle">CO₂ eq. per year</p>
             </div>
             <div className="emissions-explainer">
-              <strong>34 % fewer emissions than without the community</strong>
-              <p>Equivalent to 66 % of the emissions generated by purchasing all energy from the grid (Environmental impact).</p>
+              <strong> {kpis.environmentalImpact?.value != null
+                ? `${(100- kpis.environmentalImpact.value * 100).toFixed(0)}% fewer emissions than without the community.`
+                : "—"}  
+              </strong>
+              <p>  {kpis.environmentalImpact?.value != null
+                ? `Equivalent to ${(kpis.environmentalImpact.value * 100).toFixed(0)}% of the emissions generated by purchasing all energy from the grid.`
+                : "—"}
+              </p>
             </div>
           </article>
           <article className="result-card">
             <h3>Carbon payback time</h3>
-            <strong className="large-number">2.8 years</strong>
+            <strong className="large-number">
+              {kpis.carbonPaybackTime?.value != null
+                ? `${kpis.carbonPaybackTime.value.toFixed(1)} years`
+                : "—"}
+            </strong>
             <p className="card-description">Years for carbon savings to offset the emissions generated by manufacturing the installations.</p>
           </article>
         </div>

@@ -1,8 +1,19 @@
 from typing import Dict, List, Optional, Union, Any
 from enum import Enum
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse
+from services.results_service import (
+    get_experiments,
+    get_experiment_community_kpis,
+    get_experiment_prosumer_kpis,
+    get_prosumer_kpis,
+)
+from services.simulation_service import (
+    list_simulations,
+    get_simulation_experiments,
+)
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Renewable Energy Community Digital Twin API",
@@ -14,6 +25,15 @@ This API defines the interface between the Digital Twin and the other components
     version="1.0.0"
 )
 
+# Allows the development frontend to call the backend from its own local port.
+# Restrict this list to the deployed frontend origin before production deployment.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class DataSource(str, Enum):
     default = "default"
@@ -398,7 +418,7 @@ def health_check():
         status="ok"
     )
 
-
+"""
 @app.get(
     "/experiments",
     response_model=List[ExperimentSummary],
@@ -406,9 +426,9 @@ def health_check():
     summary="List available experiments",
 )
 def get_experiments():
-    """
+    """"""
     Return the experiments available in the Results directory.
-    """
+    """"""
     return {"experiments": []}
 
 @app.post(
@@ -423,7 +443,7 @@ def run_simulation(request: SimulationRequest):
         "status": SimulationStatus.pending,
     }
 
-
+"""
 @app.get(
     "/simulation/{simulation_id}/status",
     response_model=SimulationStatusResponse,
@@ -445,6 +465,57 @@ def get_simulation_status(experiment_id: str):
     }
 
 
+@app.get("/results/prosumers")
+def read_prosumer_results():
+    try:
+        return get_prosumer_kpis()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/experiments")
+def read_experiments():
+    try:
+        return get_experiments()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/experiments/{experiment_id}/kpis/community")
+def read_experiment_community_kpis(experiment_id: str):
+    try:
+        return get_experiment_community_kpis(experiment_id)
+    except (ValueError, FileNotFoundError) as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+@app.get("/experiments/{experiment_id}/kpis/prosumers")
+def read_experiment_prosumer_kpis(experiment_id: str):
+    try:
+        return get_experiment_prosumer_kpis(experiment_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+@app.get("/simulations")
+def get_simulations():
+    return list_simulations()
+
+
+@app.get("/simulations/{simulation_id}/experiments")
+def get_simulation_experiments_endpoint(simulation_id: str):
+    try:
+        return get_simulation_experiments(simulation_id)
+
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+
+"""
 @app.get(
     "/experiments/{experiment_id}/kpis/community",
     response_model=List[BaselineCommunityKPI],
@@ -452,7 +523,7 @@ def get_simulation_status(experiment_id: str):
     summary="Get community KPIs for an experiment",
 )
 def get_community_kpis(experiment_id: str):
-    """
+    """ """
 Returns the main community-level results of a completed Digital Twin simulation.
 
 Community KPIs include:
@@ -469,10 +540,33 @@ Community KPIs include:
 - Enviromental impact
 - TOTAL carbon payback time in years
     """
-    return {
-        "experiment_id": experiment_id,
-        "results": []
-    }
+"""
+    try:
+        return get_community_kpis(experiment_id)
+
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        )
+
+    except LookupError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        )
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error recuperant els KPI de comunitat: {str(error)}",
+        )
 
 
 @app.get(
@@ -482,7 +576,7 @@ Community KPIs include:
     summary="Get prosumer KPIs for an experiment",
 )
 def get_prosumer_kpis(experiment_id: str):
-    """
+    """"""
 Returns the main prosumer-level results of a completed Digital Twin simulation.
 
 Prosumer KPIs include:
@@ -515,12 +609,12 @@ Prosumer KPIs include:
 - PV carbon payback time in years
 - WT carbon payback time in years
 - BATT carbon payback time in years
-    """
+    """"""
     return {
         "experiment_id": experiment_id,
         "results": []
     }
-
+"""
 @app.get(
     "/experiments/{experiment_id}/plots/{category}",
     response_model=PlotListResponse,
