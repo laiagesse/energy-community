@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import ResultsTabs from "../components/ResultsTabs";
 import ResultsPageHeader from "../components/ResultsPageHeader";
 import SectionHeading from "../components/SectionHeading";
@@ -36,8 +37,13 @@ const sections = [
   { id: "environmental", title: "Environmental KPIs", color: "#3d5e80" }
 ];
 
+const SEASON_ORDER = ["winter", "spring", "summer", "autumn"];
+
 export default function ProsumerResultsPage() {
-  const [period, setPeriod] = useState("winter");
+  const [searchParams] = useSearchParams();
+  const simulationId = searchParams.get("simulation");
+  const [period, setPeriod] = useState("");
+  const [resolvedSimulationId, setResolvedSimulationId] = useState(simulationId || "");
   const [alternative, setAlternative] = useState("");
   const [experiments, setExperiments] = useState([]);
   const [prosumerData, setProsumerData] = useState(null);
@@ -45,111 +51,118 @@ export default function ProsumerResultsPage() {
   const [loadingResults, setLoadingResults] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load the available DoE experiments for the header selector.
   useEffect(() => {
+    let active = true;
     const fetchExperiments = async () => {
+      setLoadingExperiments(true);
+      setError(null);
       try {
-        const response = await fetch(`${API_URL}/experiments`);
-        if (!response.ok) {
-          throw new Error("Could not load experiments");
+        let selectedSimulation = simulationId;
+        if (!selectedSimulation) {
+          const simulationsResponse = await fetch(`${API_URL}/simulations`);
+          if (!simulationsResponse.ok) throw new Error("Could not load simulations");
+          const simulationsData = await simulationsResponse.json();
+          selectedSimulation = simulationsData.simulations?.find(name => name !== "Original_Experiment");
+          if (!selectedSimulation) throw new Error("No simulations available");
         }
 
-        const data = await response.json();
-        const availableExperiments = data.experiments ?? [];
-        setExperiments(availableExperiments);
-        if (availableExperiments.length > 0) {
-          setAlternative(availableExperiments[0].id);
+        const response = await fetch(
+          `${API_URL}/simulations/${encodeURIComponent(selectedSimulation)}/experiments`
+        );
+        if (!response.ok) {
+          const detail = await response.json().catch(() => null);
+          throw new Error(detail?.detail || "Could not load experiments");
         }
+        const data = await response.json();
+        if (!active) return;
+        setResolvedSimulationId(selectedSimulation);
+        setExperiments(data.experiments ?? []);
+        setAlternative(current =>
+          data.experiments?.some(item => item.id === current)
+            ? current
+            : data.experiments?.[0]?.id ?? ""
+        );
       } catch (err) {
-        setError(err.message);
+        if (active) setError(err.message);
       } finally {
-        setLoadingExperiments(false);
+        if (active) setLoadingExperiments(false);
       }
     };
-
     fetchExperiments();
-  }, []);
+    return () => { active = false; };
+  }, [simulationId]);
 
-  // Reload prosumer KPIs whenever the selected experiment changes.
+  const selectedExperiment = experiments.find(item => item.id === alternative);
+  const effectiveSimulationId = resolvedSimulationId;
+
   useEffect(() => {
-    if (!alternative) return;
-
+    if (!alternative || !effectiveSimulationId) return;
+    let active = true;
     const fetchProsumerResults = async () => {
       setLoadingResults(true);
       setError(null);
       setProsumerData(null);
-
       try {
         const response = await fetch(
-          `${API_URL}/experiments/${alternative}/kpis/prosumers`
+          `${API_URL}/simulations/${encodeURIComponent(effectiveSimulationId)}/experiments/${encodeURIComponent(alternative)}/kpis/prosumers`
         );
         if (!response.ok) {
           const detail = await response.json().catch(() => null);
           throw new Error(detail?.detail || "Could not load prosumer results");
         }
-
         const data = await response.json();
+        if (!active) return;
         setProsumerData(data);
-        const availablePeriods = data.periods ?? [];
-        if (!availablePeriods.some(item => item.id === period) && availablePeriods.length > 0) {
-          setPeriod(availablePeriods[0].id);
+        const available = data.periods ?? [];
+        if (!available.some(item => item.id === period)) {
+          setPeriod(available[0]?.id ?? "");
         }
       } catch (err) {
-        setError(err.message);
+        if (active) setError(err.message);
       } finally {
-        setLoadingResults(false);
+        if (active) setLoadingResults(false);
       }
     };
-
     fetchProsumerResults();
-  }, [alternative]);
+    return () => { active = false; };
+  }, [alternative, effectiveSimulationId]);
 
-  const periods = prosumerData?.periods ?? [];
-  const selectedPeriodData = periods.find(item => item.id === period);
+  const periods = (prosumerData?.periods ?? [])
+    .slice()
+    .sort((a, b) => SEASON_ORDER.indexOf(a.id) - SEASON_ORDER.indexOf(b.id))
+    .map(item => ({ id: item.id, label: item.label }));
+
+  const selectedPeriodData = prosumerData?.periods?.find(item => item.id === period);
   const prosumers = selectedPeriodData?.prosumers ?? {};
   const prosumerRows = Object.entries(prosumers).map(([prosumer, kpis]) => {
     const row = { prosumer };
-    Object.entries(kpis).forEach(([key, result]) => {
-      row[key] = result?.value ?? null;
-    });
+    Object.entries(kpis).forEach(([key, result]) => { row[key] = result?.value ?? null; });
     return row;
   });
 
-  if (loadingExperiments) {
-    return <p>Loading experiments...</p>;
-  }
-  if (error && !prosumerData) {
-    return <p>Error: {error}</p>;
-  }
-  if (experiments.length === 0) {
-    return <p>No experiments available.</p>;
-  }
-  if (loadingResults) {
-    return <p>Loading prosumer results...</p>;
-  }
-  if (error) {
-    return <p>Error: {error}</p>;
-  }
-  if (!prosumerData) {
-    return <p>No prosumer results available.</p>;
-  }
+  if (loadingExperiments) return <p>Loading experiments...</p>;
+  if (error && !prosumerData) return <p>Error: {error}</p>;
+  if (!experiments.length) return <p>No experiments available.</p>;
+  if (loadingResults) return <p>Loading prosumer results...</p>;
+  if (error) return <p>Error: {error}</p>;
+  if (!prosumerData) return <p>No prosumer results available.</p>;
 
   return (
     <main className="page-width results-page prosumer-results-page">
       <ResultsPageHeader
+        simulationId={effectiveSimulationId}
+        experiments={experiments}
+        loadingExperiments={loadingExperiments}
         period={period}
         onPeriodChange={setPeriod}
         alternative={alternative}
         onAlternativeChange={setAlternative}
-        experiments={experiments}
         periods={periods}
       />
-      <ResultsTabs active="prosumers" />
-
+      <ResultsTabs />
       <div className="prosumer-table-intro">
         <p>Expand a chart to get additional information for a KPI</p>
       </div>
-
       {sections.map(section => (
         <section className="result-section" key={section.id}>
           <SectionHeading title={section.title} description={section.description} color={section.color} />

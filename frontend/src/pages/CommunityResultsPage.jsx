@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import ResultsTabs from "../components/ResultsTabs";
 import ResultsPageHeader from "../components/ResultsPageHeader";
 import SectionHeading from "../components/SectionHeading";
 import DonutChart from "../components/DonutChart";
 import InfoButton from "../components/InfoButton";
 import { monthlyBills, monthlyCoverage } from "../data/communityResults";
+
+const API_URL = "http://127.0.0.1:8000";
 
 const colors = {
   green: "#3e7b48",
@@ -43,9 +46,12 @@ function MetricCard({ label, value, detail, info}) {
 }
 
 export default function CommunityResultsPage() {
+  const [searchParams] = useSearchParams();
+  const simulationId = searchParams.get("simulation") || "Original_Experiment";
   const [period, setPeriod] = useState("winter");
   const [alternative, setAlternative] = useState("");
   const [experiments, setExperiments] = useState([]);
+  const [loadingExperiments, setLoadingExperiments] = useState(true);
   const [communityData, setCommunityData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,7 +67,7 @@ export default function CommunityResultsPage() {
 
     const fetchExperiments = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/experiments");
+        const response = await fetch(`${API_URL}/simulations/${encodeURIComponent(simulationId)}/experiments`);
         if (!response.ok) {
           throw new Error("Could not load the available experiments");
         }
@@ -71,14 +77,10 @@ export default function CommunityResultsPage() {
 
         const availableExperiments = data.experiments ?? [];
         setExperiments(availableExperiments);
+        setAlternative(availableExperiments[0]?.id || "");
+        setLoadingExperiments(false);
 
-        if (availableExperiments.length > 0) {
-          setAlternative(current =>
-            availableExperiments.some(item => item.id === current)
-              ? current
-              : availableExperiments[0].id
-          );
-        } else {
+        if (availableExperiments.length === 0) {
           setLoading(false);
           setError("No experiments are available.");
         }
@@ -86,6 +88,7 @@ export default function CommunityResultsPage() {
         if (!cancelled) {
           setError(err.message);
           setLoading(false);
+          setLoadingExperiments(false);
         }
       }
     };
@@ -94,7 +97,7 @@ export default function CommunityResultsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [simulationId]);
 
   // Load the community KPIs whenever the selected experiment changes.
   useEffect(() => {
@@ -109,7 +112,7 @@ export default function CommunityResultsPage() {
 
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/experiments/${alternative}/kpis/community`
+          `http://127.0.0.1:8000/simulations/${encodeURIComponent(simulationId)}/experiments/${alternative}/kpis/community`
         );
 
         if (!response.ok) {
@@ -139,7 +142,7 @@ export default function CommunityResultsPage() {
     return () => {
       cancelled = true;
     };
-  }, [alternative]);
+  }, [alternative, simulationId]);
 
   const periodType = communityData?.period_type ?? null;
   const periods = communityData?.periods ?? [];
@@ -178,8 +181,10 @@ export default function CommunityResultsPage() {
         onPeriodChange={setPeriod}
         alternative={alternative}
         onAlternativeChange={setAlternative}
-        periods={periods}
         experiments={experiments}
+        loadingExperiments={loadingExperiments}
+        simulationId={simulationId}
+        periods={periods}
       /><ResultsTabs />
 
       {loading && <p className="results-status">Loading experiment results...</p>}

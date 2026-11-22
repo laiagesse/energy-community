@@ -8,6 +8,7 @@ import CompareResultsPage from "./pages/CompareResultsPage";
 import ProsumerResultsPage from "./pages/ProsumerResultsPage";
 
 import { WizardProvider } from "./context/WizardContext";
+import SimulationsResultsPage from "./pages/SimulationsResultsPage";
 
 function Placeholder({ title }) {
   return <div className="page-width placeholder">
@@ -26,7 +27,7 @@ export default function App() {
     <Route path="/configure/prosumers/:id" element={<ProsumerFormPage/>}/>
     <Route path="/configure/alternatives" element={<Placeholder title="Alternatives" />} />
     <Route path="/configure/review" element={<Placeholder title="Review" />} />
-    <Route path="/results" element={<Placeholder title="Results" />} />
+    <Route path="/results" element={<SimulationsResultsPage/>} />
     <Route path="/results/community" element={<CommunityResultsPage />} />
     <Route path="/results/prosumers" element={<ProsumerResultsPage />} />
     <Route path="/results/compare" element={<CompareResultsPage />} />

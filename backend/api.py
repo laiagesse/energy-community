@@ -8,10 +8,7 @@ from services.results_service import (
     get_experiment_community_kpis,
     get_experiment_prosumer_kpis,
     get_prosumer_kpis,
-)
-from services.simulation_service import (
     list_simulations,
-    get_simulation_experiments,
 )
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -469,51 +466,72 @@ def get_simulation_status(experiment_id: str):
 def read_prosumer_results():
     try:
         return get_prosumer_kpis()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
 
 @app.get("/experiments")
-def read_experiments():
+def read_default_experiments():
     try:
         return get_experiments()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/experiments/{experiment_id}/kpis/community")
-def read_experiment_community_kpis(experiment_id: str):
-    try:
-        return get_experiment_community_kpis(experiment_id)
-    except (ValueError, FileNotFoundError) as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
-
-@app.get("/experiments/{experiment_id}/kpis/prosumers")
-def read_experiment_prosumer_kpis(experiment_id: str):
-    try:
-        return get_experiment_prosumer_kpis(experiment_id)
-    except ValueError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
     except FileNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/experiments/{experiment_id}/kpis/community")
+def read_default_community_kpis(experiment_id: str):
+    try:
+        return get_experiment_community_kpis("Original_Experiment", experiment_id)
+    except (ValueError, FileNotFoundError) as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/experiments/{experiment_id}/kpis/prosumers")
+def read_default_prosumer_kpis(experiment_id: str):
+    try:
+        return get_experiment_prosumer_kpis("Original_Experiment", experiment_id)
+    except (ValueError, FileNotFoundError) as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
 
 @app.get("/simulations")
 def get_simulations():
-    return list_simulations()
+    try:
+        return list_simulations()
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 @app.get("/simulations/{simulation_id}/experiments")
 def get_simulation_experiments_endpoint(simulation_id: str):
     try:
-        return get_simulation_experiments(simulation_id)
-
+        return get_experiments(simulation_id)
     except FileNotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error))
-
+        raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error))
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.get("/simulations/{simulation_id}/experiments/{experiment_id}/kpis/community")
+def get_simulation_community_kpis_endpoint(simulation_id: str, experiment_id: str):
+    try:
+        return get_experiment_community_kpis(simulation_id, experiment_id)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/simulations/{simulation_id}/experiments/{experiment_id}/kpis/prosumers")
+def get_simulation_prosumer_kpis_endpoint(simulation_id: str, experiment_id: str):
+    try:
+        return get_experiment_prosumer_kpis(simulation_id, experiment_id)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 """
 @app.get(

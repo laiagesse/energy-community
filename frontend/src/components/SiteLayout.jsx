@@ -7,7 +7,7 @@ export default function SiteLayout() {
   const navItems = [
     { to: "/", label: "Home" },
     { to: "/configure/data", label: "Configure Simulation" },
-    { to: "/results/community", label: "Analyze Results" },
+    { to: "/results", label: "Analyze Results" },
     { to: "/how-it-works", label: "How It Works" },
     { to: "/examples", label: "Examples" },
     { to: "/contact", label: "Contact" },

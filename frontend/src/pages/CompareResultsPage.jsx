@@ -1,5 +1,6 @@
 
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import ResultsPageHeader from "../components/ResultsPageHeader";
 import ResultsTabs from "../components/ResultsTabs";
 import {
@@ -10,12 +11,7 @@ import {
 
 const API_URL = "http://127.0.0.1:8000";
 
-const periods = [
-  { id: "winter", label: "Winter" },
-  { id: "spring", label: "Spring" },
-  { id: "summer", label: "Summer" },
-  { id: "autumn", label: "Autumn" }
-];
+const SEASON_ORDER = ["winter", "spring", "summer", "autumn"];
 
 // Formata els valors segons la unitat de cada indicador.
 function formatKpiValue(value, format) {
@@ -130,10 +126,13 @@ function bestScenarioIndex(indicator, scenarios, experimentKpis, period) {
 }
 
 export default function CompareResultsPage() {
-  const [period, setPeriod] = useState("winter");
-  const [alternative, setAlternative] = useState("Current installation");
+  const [searchParams] = useSearchParams();
+  const simulationId = searchParams.get("simulation");
+  const [resolvedSimulationId, setResolvedSimulationId] = useState(simulationId || "");
+  const [period, setPeriod] = useState("");
+  const [alternative, setAlternative] = useState("");
 
-  const [scenarios, setScenarios] = useState(initialScenarios);
+  const [scenarios, setScenarios] = useState([]);
   const [experiments, setExperiments] = useState([]);
   const [experimentKpis, setExperimentKpis] = useState({});
   const [loadingKpis, setLoadingKpis] = useState(false);
@@ -179,101 +178,86 @@ export default function CompareResultsPage() {
     toggleDimension(dimension);
   };
 
-  // Carrega els experiments disponibles.
+  // Carrega els experiments de la simulació seleccionada.
   useEffect(() => {
+    let active = true;
     const fetchExperiments = async () => {
       try {
-        const response = await fetch(`${API_URL}/experiments`);
-
-        if (!response.ok) {
-          throw new Error("Could not load experiments");
+        let selectedSimulation = simulationId;
+        if (!selectedSimulation) {
+          const simulationsResponse = await fetch(`${API_URL}/simulations`);
+          if (!simulationsResponse.ok) throw new Error("Could not load simulations");
+          const simulationsData = await simulationsResponse.json();
+          selectedSimulation = simulationsData.simulations?.find(name => name !== "Original_Experiment");
+          if (!selectedSimulation) throw new Error("No simulations available");
         }
 
-        const data = await response.json();
-        const availableExperiments = data.experiments ?? [];
-
-        setExperiments(availableExperiments);
-
-        setScenarios(current =>
-          current.map((scenario, index) => {
-            const experiment = availableExperiments[index];
-
-            if (!experiment) return scenario;
-
-            return {
-              ...scenario,
-              experimentId: experiment.id,
-              experimentName: experiment.name
-            };
-          })
+        const response = await fetch(
+          `${API_URL}/simulations/${encodeURIComponent(selectedSimulation)}/experiments`
         );
+        if (!response.ok) {
+          const detail = await response.json().catch(() => null);
+          throw new Error(detail?.detail || "Could not load experiments");
+        }
+        const data = await response.json();
+        if (!active) return;
+
+        const availableExperiments = data.experiments ?? [];
+        setResolvedSimulationId(selectedSimulation);
+        setExperiments(availableExperiments);
+        setScenarios(
+          availableExperiments.slice(0, Math.min(2, initialScenarios.length)).map((experiment, index) => ({
+            ...initialScenarios[index],
+            experimentId: experiment.id,
+            experimentName: experiment.name,
+          }))
+        );
+        const seasonIds = [...new Set(
+          availableExperiments.flatMap(experiment => experiment.available_seasons ?? [])
+            .map(season => String(season).toLowerCase())
+        )].sort((a, b) => SEASON_ORDER.indexOf(a) - SEASON_ORDER.indexOf(b));
+        setPeriod(current => seasonIds.includes(current) ? current : (seasonIds[0] ?? ""));
       } catch (error) {
         console.error("Error loading experiments:", error);
       }
     };
-
     fetchExperiments();
-  }, []);
+    return () => { active = false; };
+  }, [simulationId]);
 
-  // Carrega els KPIs dels experiments seleccionats.
+  // Carrega els KPIs dels experiments seleccionats dins la simulació activa.
   useEffect(() => {
-    const experimentIds = [
-      ...new Set(
-        scenarios
-          .map(scenario => scenario.experimentId)
-          .filter(Boolean)
-      )
-    ];
-
-    if (!experimentIds.length) return;
+    const experimentIds = [...new Set(
+      scenarios.map(scenario => scenario.experimentId).filter(Boolean)
+    )];
+    if (!resolvedSimulationId || !experimentIds.length) return;
 
     let active = true;
-
     const fetchExperimentKpis = async () => {
       setLoadingKpis(true);
-
       try {
         const results = await Promise.all(
           experimentIds.map(async experimentId => {
             const response = await fetch(
-              `${API_URL}/experiments/${experimentId}/kpis/community`
+              `${API_URL}/simulations/${encodeURIComponent(resolvedSimulationId)}/experiments/${encodeURIComponent(experimentId)}/kpis/community`
             );
-
             if (!response.ok) {
-              throw new Error(
-                `Could not load KPIs for ${experimentId}`
-              );
+              const detail = await response.json().catch(() => null);
+              throw new Error(detail?.detail || `Could not load KPIs for ${experimentId}`);
             }
-
-            const data = await response.json();
-
-            return [experimentId, data];
+            return [experimentId, await response.json()];
           })
         );
-
-        if (active) {
-          setExperimentKpis(current => ({
-            ...current,
-            ...Object.fromEntries(results)
-          }));
-        }
+        if (active) setExperimentKpis(Object.fromEntries(results));
       } catch (error) {
         console.error("Error loading experiment KPIs:", error);
       } finally {
-        if (active) {
-          setLoadingKpis(false);
-        }
+        if (active) setLoadingKpis(false);
       }
     };
-
     fetchExperimentKpis();
-
-    return () => {
-      active = false;
-    };
-  }, [
-    scenarios.map(scenario => scenario.experimentId).join("|")
-  ]);
+    return () => { active = false; };
+  }, [resolvedSimulationId, scenarios.map(scenario => scenario.experimentId).join("|")]);
 
   // Canvia l'experiment seleccionat en una targeta.
   const changeScenario = (scenarioId, experimentId) => {
@@ -341,15 +325,18 @@ export default function CompareResultsPage() {
   return (
     <main className="page-width results-page compare-page">
       <ResultsPageHeader
+        simulationId={resolvedSimulationId}
         subtitle="Compare different energy community configurations and identify which one best matches your priorities."
         period={period}
         onPeriodChange={setPeriod}
         alternative={alternative}
         onAlternativeChange={setAlternative}
-        periods={periods}
+        periods={[...new Set(experiments.flatMap(experiment => experiment.available_seasons ?? []).map(season => String(season).toLowerCase()))]
+          .sort((a, b) => SEASON_ORDER.indexOf(a) - SEASON_ORDER.indexOf(b))
+          .map(id => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1) }))}
       />
 
-      <ResultsTabs active="compare" />
+      <ResultsTabs />
 
       {/* EXPERIMENTS TO COMPARE */}
       <section className="compare-section scenario-section">

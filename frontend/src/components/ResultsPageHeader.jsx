@@ -1,6 +1,21 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
-export default function ResultsPageHeader({subtitle, period, onPeriodChange, alternative, onAlternativeChange, experiments = [], periods = []}) {
+export default function ResultsPageHeader({
+  subtitle,
+  simulationId,
+  experiments = [],
+  loadingExperiments = false,
+  period,
+  onPeriodChange,
+  alternative,
+  onAlternativeChange,
+  periods = [],
+}) {
+  const location = useLocation();
+  const simulationQuery = simulationId
+    ? `?simulation=${encodeURIComponent(simulationId)}`
+    : location.search;
+
   return (
     <>
       <Link className="results-back-link" to="/results">
@@ -9,23 +24,25 @@ export default function ResultsPageHeader({subtitle, period, onPeriodChange, alt
 
       <div className="results-heading">
         <div className="results-title-block">
-          <h1>Example community</h1>
+          <h1>{simulationId}</h1>
           {subtitle && <p>{subtitle}</p>}
         </div>
 
         <div className="results-actions">
-          <select
-            id="results-alternative"
-            value={alternative}
-            onChange={event => onAlternativeChange(event.target.value)}
-            disabled={experiments.length === 0}
-          >
-            {experiments.map(experiment => (
-              <option key={experiment.id} value={experiment.id}>
-                {experiment.name}
-              </option>
-            ))}
-          </select>
+          {experiments.length > 0 && (
+            <select
+              id="results-alternative"
+              value={alternative ?? ""}
+              onChange={event => onAlternativeChange?.(event.target.value)}
+              disabled={loadingExperiments}
+            >
+              {experiments.map(experiment => (
+                <option key={experiment.id} value={experiment.id}>
+                  {experiment.name}
+                </option>
+              ))}
+            </select>
+          )}
 
           <div className="segmented-control" role="group">
             {periods.map(item => (
