@@ -14,8 +14,7 @@ const columns = {
   ],
   economic: [
     ["prosumer", "Prosumer"], ["finalBill", "Total final bill (€/month)"], ["saved", "Saved by entering community (€/month)"],
-    ["annualProfit", "Annual profit (annual return)"], ["profitPv", "Annual profit PV"], ["profitWt", "Annual profit WT"],
-    ["profitBattery", "Annual profit B"], ["paybackPv", "Payback time PV"], ["paybackWt", "Payback time WT"], ["paybackBattery", "Payback time B"]
+    ["annualProfit", "Annual profit (annual return)"]
   ],
   social: [
     ["prosumer", "Prosumer"], ["billReduction", "Bill reduction"], ["gainAppropriation", "EC gain appropriation"],
@@ -24,8 +23,7 @@ const columns = {
   environmental: [
     ["prosumer", "Prosumer"], ["avoidedEmissions", "Avoided annual emissions (kg CO₂ eq/year)"],
     ["environmentalImpact", "Environmental impact (with/without community)"], ["carbonDebt", "Upfront carbon debt"],
-    ["carbonPayback", "Total carbon payback time"], ["pvPayback", "PV carbon payback time"],
-    ["wtPayback", "WT carbon payback time"], ["batteryPayback", "BATT carbon payback time"]
+    ["carbonPayback", "Total carbon payback time"]
   ]
 };
 

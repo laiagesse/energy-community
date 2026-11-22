@@ -379,7 +379,7 @@ export default function CompareResultsPage() {
           type="button"
           className="add-scenario-button"
           onClick={addScenario}
-          disabled={scenarios.length >= 3 || !experiments.length}
+          disabled={!experiments.length}
         >
           ＋ Add scenario
         </button>

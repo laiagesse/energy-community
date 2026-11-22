@@ -4,7 +4,7 @@ import ResultsTabs from "../components/ResultsTabs";
 import ResultsPageHeader from "../components/ResultsPageHeader";
 import SectionHeading from "../components/SectionHeading";
 import DonutChart from "../components/DonutChart";
-import InfoButton from "../components/InfoButton";
+import IndicatorCard from "../components/IndicatorCard";
 import { monthlyBills, monthlyCoverage } from "../data/communityResults";
 import { api } from "../api/api";
 
@@ -27,20 +27,6 @@ function Legend({ items }) {
         </div>
       ))}
     </div>
-  );
-}
-
-function MetricCard({ label, value, detail, info}) {
-  return (
-    <article className="summary-card">
-      <div className="summary-card-top">
-        <span>{label}</span>
-        <InfoButton content={info} />
-      </div>
-
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </article>
   );
 }
 
@@ -160,7 +146,7 @@ export default function CommunityResultsPage() {
   });
 
   return (
-    <main className="page-width">
+    <main className="page-width results-page community-results-page">
       <ResultsPageHeader
         period={period}
         onPeriodChange={setPeriod}
@@ -193,10 +179,11 @@ export default function CommunityResultsPage() {
       </div>
 
       <section className="summary-grid">
-        <MetricCard label="Total savings" 
+        <IndicatorCard
+          title="Total savings"
+          description="Monthly community savings"
           value={kpis.totalSaved ? `${kpis.totalSaved.value.toFixed(0)} €` : "—"}
-          //detail={`${selectedPeriodLabel} community savings`}
-          detail= "Monthly community savings"
+          className="summary-card"
           info={
             <>
               <p>Total savings achieved by the energy community compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
@@ -204,9 +191,12 @@ export default function CommunityResultsPage() {
             </>
           }
         />
-        <MetricCard label="Self-sufficiency" 
+
+        <IndicatorCard
+          title="Self-sufficiency"
+          description="Consumption covered by own resources"
           value={kpis.selfSufficiency ? `${(kpis.selfSufficiency.value * 100).toFixed(1)} %` : "—"}
-          detail="Consumption covered by own resources" 
+          className="summary-card"
           info={
             <>
               <p>Share of total community demand covered by locally generated energy, either consumed directly or stored in batteries.</p>
@@ -215,10 +205,12 @@ export default function CommunityResultsPage() {
             </>
           }
         />
-        <MetricCard 
-          label="Fairness" 
-          value={kpis.fairness ? kpis.fairness.value.toFixed(3) : "—"} 
-          detail="Distribution equity" 
+
+        <IndicatorCard
+          title="Fairness"
+          description="Distribution equity"
+          value={kpis.fairness ? kpis.fairness.value.toFixed(3) : "—"}
+          className="summary-card"
           info={
             <>
               <p>Measures how evenly the economic savings of each community member are distributed in relation to the amount of energy each one generates.</p>
@@ -226,10 +218,12 @@ export default function CommunityResultsPage() {
             </>
           }
         />
-        <MetricCard 
-          label="Avoided emissions" 
+
+        <IndicatorCard
+          title="Avoided emissions"
+          description="Net annual CO₂ reduction"
           value={kpis.avoidedEmissions ? `${kpis.avoidedEmissions.value.toFixed(0)} kg` : "—"}
-          detail="Net annual CO₂ reduction" 
+          className="summary-card"
           info={
             <>
               <p>Estimates the net annual CO₂-equivalent emissions avoided by the community.</p>
@@ -243,22 +237,16 @@ export default function CommunityResultsPage() {
       <section id="energy" className="result-section">
         <SectionHeading title="Energy" color={colors.green} />
         <div className="energy-cards">
-          <article className="result-card">
-            <div className="card-heading-row">
-              <div>
-                <h3>Community electricity consumption</h3>
-                <p className="card-subtitle">{`${selectedPeriodLabel} consumption coverage by energy source`}</p>
-              </div>
-              <InfoButton
-                content={
-                  <>
-                    <p>Shows how the total electricity consumed by the community is covered by its own resources, electricity purchased from the grid and peer-to-peer (P2P) exchanges.</p>
-                    <p>Each percentage represents the share of total community consumption covered by that source.</p>
-                  </>
-                }
-              />
-            </div>
-
+          <IndicatorCard
+            title="Community electricity consumption"
+            description={`${selectedPeriodLabel} consumption coverage by energy source`}
+            info={
+              <>
+                <p>Shows how the total electricity consumed by the community is covered by its own resources, electricity purchased from the grid and peer-to-peer (P2P) exchanges.</p>
+                <p>Each percentage represents the share of total community consumption covered by that source.</p>
+              </>
+            }
+          >
             <div className="donut-card-content">
               <DonutChart
                 totalConsumption="-"
@@ -303,47 +291,37 @@ export default function CommunityResultsPage() {
                 }
               ]} />
             </div>
+          </IndicatorCard>
 
-          </article>
-
-          <article className="result-card">
-            <h3>Community direct self-consumption</h3>
-            <strong className="large-number">
-              {kpis.selfConsumption?.value != null
-                ? `${(kpis.selfConsumption.value * 100).toFixed(1)} %`
-                : "—"}
-            </strong>
+          <IndicatorCard
+            title="Community direct self-consumption"
+            description="Share of community generation used immediately without battery storage"
+            className="direct-self-consumption-card"
+            value={kpis.selfConsumption?.value != null
+              ? `${(kpis.selfConsumption.value * 100).toFixed(1)} %`
+              : "—"}
+            info={
+              <>
+                <p>Measures the share of the community's total energy generation that members consume immediately, without storing it in a battery.</p>
+                <p>Higher values mean more locally generated energy is used directly.</p>
+              </>
+            }
+          >
             <div className="meter"><span style={{ width: kpis.selfConsumption?.value != null
                 ? `${(kpis.selfConsumption.value * 100).toFixed(1)}%`
                 : "—"} } /></div>
-            <p className="card-description">Proportion of the community's total energy generation that is consumed immediately by its members, without being stored in the battery.</p>
-          </article>
+          </IndicatorCard>
 
-
-        <article className="result-card">
-          <div className="card-heading-row">
-            <div>
-              <h3>Surplus energy distribution</h3>
-              <p className="card-subtitle">How excess community-generated electricity is distributed</p>
-            </div>
-
-            <InfoButton
-              content={
-                <>
-                  <p>
-                    Shows how the surplus electricity generated by the community
-                    is distributed between peer-to-peer (P2P) sales and exports
-                    to the electricity grid.
-                  </p>
-                  <p>
-                    Each percentage represents the share of total surplus energy
-                    allocated to each destination.
-                  </p>
-                </>
-              }
-            />
-          </div>
-
+          <IndicatorCard
+            title="Surplus energy distribution"
+            description="How excess community-generated electricity is distributed"
+            info={
+              <>
+                <p>Shows how the surplus electricity generated by the community is distributed between peer-to-peer (P2P) sales and exports to the electricity grid.</p>
+                <p>Each percentage represents the share of total surplus energy allocated to each destination.</p>
+              </>
+            }
+          >
           <div className="donut-card-content">
             <DonutChart
               totalConsumption="100 %"
@@ -369,15 +347,20 @@ export default function CommunityResultsPage() {
               { label: "Grid exports", value: "76 %", color: colors.red }
             ]} />
           </div>
-        </article>
-
+        </IndicatorCard>
         </div>
-        <article className="result-card chart-card">
+        <IndicatorCard
+          title={`${periodType === "month" ? "Monthly" : "Seasonal"} consumption coverage`}
+          description="Share of community consumption covered by each energy source in every period"
+          className="chart-card"
+          info={
+            <>
+              <p>Compares the share of community electricity consumption covered by own resources, grid purchases and peer-to-peer exchanges in each period.</p>
+              <p>Hover over a segment to see its value.</p>
+            </>
+          }
+        >
           <div className="chart-heading">
-            <div>
-              <h3>{periodType === "month" ? "Monthly" : "Seasonal"} consumption coverage</h3>
-              <p className="card-subtitle"></p>
-            </div>
             <Legend items={[
               { label: "Own resources", color: colors.green },
               { label: "Grid", color: colors.red },
@@ -467,28 +450,26 @@ export default function CommunityResultsPage() {
               </div>
             ))}
           </div>
-        </article>
+
+        </IndicatorCard>
       </section>
 
       <section id="economics" className="result-section">
         <SectionHeading title="Economics" color={colors.ochre}/>
         <div className="economics-summary-grid">
-          <article className="result-card">
-            <div className="card-heading-row">
-              <h3>Total savings</h3>
-              <InfoButton content={
+          <IndicatorCard
+            title="Total savings"
+            description="Estimated monthly economic savings"
+            value={kpis.totalSaved?.value != null
+              ? `${kpis.totalSaved.value.toFixed(0)} €`
+              : "—"}
+            info={
                 <>
                   <p>Monthly savings achieved by the community compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
                   <p>Higher values mean greater economic benefits.</p>
                 </>
-              } />
-            </div>
-            <strong className="large-number">
-              {kpis.totalSaved?.value != null
-                ? `${kpis.totalSaved.value.toFixed(0)} €`
-                : "—"}
-            </strong>
-            <p className="card-subtitle">Estimated monthly economic savings</p>
+            }
+          >
             <hr />
             <p className="card-description">Equivalent to the baseline electricity costs of</p>
             <strong className="households-number">
@@ -496,43 +477,35 @@ export default function CommunityResultsPage() {
                 ? `${kpis.baselinePovertyHelp.value.toFixed(1)} average households`
                 : "—"}
             </strong>
-          </article>
+          </IndicatorCard>
 
-          <article className="result-card">
-            <div className="card-heading-row">
-            <h3>Community final electricity bill</h3>
-            <InfoButton
-              content={
+          <IndicatorCard
+            title="Community final electricity bill"
+            description="Total net electricity cost for the community per month"
+            value={kpis.totalFinalBill?.value != null
+              ? `${kpis.totalFinalBill.value.toFixed(0)} €`
+              : "—"}
+            info={
                 <>
                   <p>Represents the total monthly net electricity cost of all community members, taking into account electricity purchases from the grid and through P2P exchanges.</p>
                   <p>Revenues from surplus energy sold to the grid or through P2P exchanges are deducted from these costs.</p>
                 </>
-              }
-            />
-            </div>
-            <strong className="large-number">
-              {kpis.totalFinalBill?.value != null
-                ? `${kpis.totalFinalBill.value.toFixed(0)} €`
-                : "—"}
-            </strong>
-            <p className="card-subtitle">Total net electricity cost for the community per month</p>
-          </article>
+            }
+          />
         </div>
 
 
-        <article className="result-card table-card">
-          <div className="card-heading-row">
-            <h3>Monthly electricity bill comparison</h3>
-            <InfoButton
-              content={
+        <IndicatorCard
+          title="Monthly electricity bill comparison"
+          description="Community bills compared with estimated costs without the community"
+          className="table-card"
+          info={
                 <>
                   <p>Compares the community's total electricity bill with the estimated cost if members purchased all their electricity from the grid without participating in the energy community.</p>
                   <p>The monthly savings correspond to the difference between these two amounts. The final row shows the total for the year.</p>
                 </>
-              }
-            />
-          </div>
-
+          }
+        >
           <div className="table-scroll">
             <table className="results-table">
               <thead>
@@ -561,7 +534,7 @@ export default function CommunityResultsPage() {
               </tbody>
             </table>
           </div>
-        </article>
+        </IndicatorCard>
 
 
         <div className="economics-subsection">
@@ -571,27 +544,19 @@ export default function CommunityResultsPage() {
           </div>
 
           <div className="economics-summary-grid">
-            <article className="result-card">
-              <div className="card-heading-row">
-                <h3>Annual return on investment</h3>
-                <InfoButton content="Indicates the annual return generated by the investment in the installations, expressed as a percentage of the total amount invested." />
-              </div>
-              <strong className="large-number">- %</strong>
-              <p className="card-description">
-                Each year, you earn approximately this percentage of the amount invested.
-              </p>
-            </article>
+            <IndicatorCard
+              title="Annual return on investment"
+              description="Percentage of the total installation investment returned each year"
+              value="- %"
+              info="Indicates the annual return generated by the investment in the installations, expressed as a percentage of the total amount invested."
+            />
 
-            <article className="result-card">
-              <div className="card-heading-row">
-                <h3>Estimated investment payback</h3>
-                <InfoButton content="Estimates how many years are needed to recover the initial investment based on the annual return. It is calculated as 100 divided by the annual return percentage." />
-              </div>
-              <strong className="large-number">≈ - years</strong>
-              <p className="card-description">
-                Estimate of the time needed to recover the initial investment based on the annual return.
-              </p>
-            </article>
+            <IndicatorCard
+              title="Estimated investment payback"
+              description="Estimated time needed to recover the initial investment"
+              value="≈ - years"
+              info="Estimates how many years are needed to recover the initial investment based on the annual return. It is calculated as 100 divided by the annual return percentage."
+            />
           </div>
         </div>
 
@@ -601,39 +566,47 @@ export default function CommunityResultsPage() {
       <section id="social" className="result-section">
         <SectionHeading title="Social" color={colors.purple} />
         <div className="two-cards">
-          <article className="result-card">
-            <h3>Fairness (Fairness index)</h3>
-            <strong className="large-number">
-              {kpis.fairness?.value != null
-                ? kpis.fairness.value.toFixed(3)
-                : "—"}
-            </strong>
-          </article>
-          <article className="result-card">
-            <h3>Self-sufficiency gap</h3>
-            <strong className="large-number">
-              {kpis.selfSufficiencyGap?.value != null
-                ? `${(kpis.selfSufficiencyGap.value * 100).toFixed(1)} pp`
-                : "—"}
-            </strong>
-            <p className="card-description">Between the most and least self-sufficient participant.</p>
-          </article>
+          <IndicatorCard
+            title="Fairness (Fairness index)"
+            description="Equity in the distribution of community benefits"
+            value={kpis.fairness?.value != null
+              ? kpis.fairness.value.toFixed(3)
+              : "—"}
+            info={
+              <>
+                <p>Measures how evenly economic savings are distributed among community members relative to the energy each one generates.</p>
+                <p>Values closer to 1 indicate a more balanced distribution.</p>
+              </>
+            }
+          />
+          <IndicatorCard
+            title="Self-sufficiency gap"
+            description="Difference between the most and least self-sufficient participant"
+            value={kpis.selfSufficiencyGap?.value != null
+              ? `${(kpis.selfSufficiencyGap.value * 100).toFixed(1)} pp`
+              : "—"}
+            info="Measures the percentage-point difference in self-sufficiency between the community members with the highest and lowest self-sufficiency."
+          />
         </div>
       </section>
 
       <section id="environmental" className="result-section">
         <SectionHeading title="Environmental" color={colors.blue} />
         <div className="two-cards">
-          <article className="result-card emissions-card">
-            <div>
-              <h3>Annual avoided emissions</h3>
-              <strong className="large-number">
-                {kpis.avoidedEmissions?.value != null
-                  ? `${kpis.avoidedEmissions.value.toFixed(0)} kg`
-                  : "—"}
-              </strong>
-              <p className="card-subtitle">CO₂ eq. per year</p>
-            </div>
+          <IndicatorCard
+            title="Annual avoided emissions"
+            description="Net annual reduction in CO₂-equivalent emissions"
+            className="emissions-card"
+            value={kpis.avoidedEmissions?.value != null
+              ? `${kpis.avoidedEmissions.value.toFixed(0)} kg`
+              : "—"}
+            info={
+              <>
+                <p>Estimates the net annual emissions avoided by the community compared with purchasing all energy from the grid.</p>
+                <p>It accounts for reduced grid electricity use and the estimated footprint of the installed equipment.</p>
+              </>
+            }
+          >
             <div className="emissions-explainer">
               <strong> {kpis.environmentalImpact?.value != null
                 ? `${(100- kpis.environmentalImpact.value * 100).toFixed(0)}% fewer emissions than without the community.`
@@ -644,16 +617,15 @@ export default function CommunityResultsPage() {
                 : "—"}
               </p>
             </div>
-          </article>
-          <article className="result-card">
-            <h3>Carbon payback time</h3>
-            <strong className="large-number">
-              {kpis.carbonPaybackTime?.value != null
-                ? `${kpis.carbonPaybackTime.value.toFixed(1)} years`
-                : "—"}
-            </strong>
-            <p className="card-description">Years for carbon savings to offset the emissions generated by manufacturing the installations.</p>
-          </article>
+          </IndicatorCard>
+          <IndicatorCard
+            title="Carbon payback time"
+            description="Time for carbon savings to offset installation emissions"
+            value={kpis.carbonPaybackTime?.value != null
+              ? `${kpis.carbonPaybackTime.value.toFixed(1)} years`
+              : "—"}
+            info="Estimates the years required for the community's carbon savings to offset the emissions generated by manufacturing the installations."
+          />
         </div>
       </section>
     </main>

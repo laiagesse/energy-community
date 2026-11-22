@@ -876,7 +876,7 @@ h1 {
   flex: 0 0 auto;
   padding: .625rem 0 .75rem;
   color: var(--results-muted);
-  font-size: .8125rem;
+  font-size: .875rem;
   font-weight: 400;
   text-decoration: none;
   white-space: nowrap;
@@ -1030,14 +1030,6 @@ h1 {
   font-size: .75rem;
   line-height: 1.4;
 }
-.summary-card strong {
-  color: var(--results-ink);
-  font-size: 1.75rem;
-  line-height: 1.15;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .summary-grid,
 .summary-card {
   overflow: visible;
@@ -1096,7 +1088,7 @@ h1 {
 .card-description {
   margin: .5rem 0 0;
   color: var(--results-muted);
-  font-size: .6875rem;
+  font-size: .75rem;
   line-height: 1.5;
 }
 
@@ -1120,7 +1112,7 @@ h1 {
   gap: .4375rem;
   min-width: 0;
   color: var(--results-ink);
-  font-size: .6875rem;
+  font-size: .75rem;
 }
 .chart-legend i {
   width: .5rem;
@@ -1287,7 +1279,7 @@ h1 {
   border-radius: .125rem .125rem 0 0;
 }
 .stack-bars i { display: block; min-height: .0625rem; }
-.stack-column > span { color: var(--results-muted); font-size: .625rem; }
+.stack-column > span { color: var(--results-muted); font-size: .75rem; }
 /* Economic results, tables and return-on-investment cards */
 
 
@@ -1446,7 +1438,7 @@ h1 {
 .economics-subsection-heading p {
   margin: 0;
   color: var(--results-muted);
-  font-size: .8125rem;
+  font-size: .75rem;
   line-height: 1.5;
 }
 .metric-label {
@@ -1491,14 +1483,14 @@ h1 {
 
 .emissions-explainer strong {
   color: #2f7a4c;
-  font-size: .875rem;
+  font-size: 1rem;
   line-height: 1.4;
 }
 
 .emissions-explainer p {
   margin: .375rem 0 0;
   color: var(--results-muted);
-  font-size: .6875rem;
+  font-size: .75rem;
   line-height: 1.5;
 }
 
@@ -1640,7 +1632,6 @@ h1 {
   .energy-cards > :last-child { grid-column: auto; }
   .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .625rem; }
   .summary-card { padding: .875rem; }
-  .summary-card strong { font-size: 1.375rem; }
   .donut-card-content { gap: .75rem; }
   .donut-chart { width: 7rem; height: 7rem; flex-basis: 7rem; }
   .donut-hole { width: 4.5rem; height: 4.5rem; }
@@ -1998,7 +1989,7 @@ h1 {
 .compare-page .compare-section h2,
 .compare-page .comparison-title-row h2 {
   color: var(--results-ink);
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
 }
@@ -2755,5 +2746,177 @@ textarea {
   .scenario-card,
   .indicator-catalog {
     padding: clamp(1.25rem, 1.1vw, 2.25rem);
+  }
+}
+
+/* Shared result indicator cards */
+.indicator-card {
+  display: flex;
+  flex-direction: column;
+  gap: .400rem;
+  min-width: 0;
+  padding: 1.25rem;
+}
+
+.indicator-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  width: 100%;
+}
+
+.indicator-card-heading {
+  min-width: 0;
+}
+
+.indicator-card-heading h3 {
+  margin: 0;
+  color: var(--results-ink);
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.indicator-card-description {
+  width: 100%;
+  margin: -.25rem 0 0;
+  color: var(--results-muted);
+  font-size: .75rem;
+  font-weight: 400;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.indicator-card > .info-button-wrapper {
+  flex: 0 0 auto;
+  margin-top: -.125rem;
+}
+
+.indicator-card-content {
+  min-width: 0;
+}
+
+.indicator-card-content > .indicator-card-value {
+  display: block;
+}
+
+.indicator-card.direct-self-consumption-card .indicator-card-value {
+  width: 100%;
+  text-align: center;
+}
+
+.indicator-card .donut-card-content {
+  min-height: 0;
+}
+
+.indicator-card.chart-card .chart-heading {
+  width: 100%;
+  justify-content: flex-end;
+  margin-bottom: 1.25rem;
+  padding-right: 2rem;
+}
+
+.indicator-card.emissions-card {
+  display: flex;
+  align-items: stretch;
+}
+
+.indicator-card.emissions-card .indicator-card-content {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* Consistent table framing and typography across result views */
+.results-page .table-scroll,
+.results-page .kpi-table-scroll,
+.results-page .comparison-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: .0625rem solid var(--results-border);
+  border-radius: .625rem;
+  background: var(--results-card);
+}
+
+.results-page .results-table,
+.results-page .kpi-table,
+.results-page .comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--results-ink);
+  font-size: .75rem;
+}
+
+.results-page .results-table th,
+.results-page .results-table td,
+.results-page .kpi-table th,
+.results-page .kpi-table td,
+.results-page .comparison-table th,
+.results-page .comparison-table td {
+  padding: .75rem 1rem;
+  border-bottom: .0625rem solid var(--results-border);
+  vertical-align: middle;
+}
+
+.results-page .results-table th,
+.results-page .kpi-table th,
+.results-page .comparison-table th {
+  height: auto;
+  background: var(--results-header-cell);
+  color: var(--results-muted);
+  font-size: .75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+}
+
+.results-page .results-table td,
+.results-page .kpi-table td,
+.results-page .comparison-table td {
+  font-size: .75rem;
+  line-height: 1.45;
+}
+
+.results-page .results-table tbody tr:last-child td,
+.results-page .kpi-table tbody tr:last-child td,
+.results-page .comparison-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.results-page .results-table tbody tr:hover,
+.results-page .kpi-table tbody tr:hover,
+.results-page .comparison-table tbody tr:hover {
+  background: #faf8f4;
+}
+
+.results-page .results-table .total-row,
+.results-page .results-table .total-row:hover {
+  background: #f8f4ec;
+}
+
+@media (max-width: 40rem) {
+  .indicator-card {
+    padding: 1rem;
+  }
+
+  .indicator-card-description {
+    white-space: normal;
+  }
+
+  .indicator-card.emissions-card .indicator-card-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .results-page .results-table th,
+  .results-page .results-table td,
+  .results-page .kpi-table th,
+  .results-page .kpi-table td,
+  .results-page .comparison-table th,
+  .results-page .comparison-table td {
+    padding: .625rem .75rem;
   }
 }
