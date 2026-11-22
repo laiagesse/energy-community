@@ -8,8 +8,7 @@ import {
   defaultSelectedIndicators,
   dimensions
 } from "../data/comparisonResults";
-
-const API_URL = "http://127.0.0.1:8000";
+import { api } from "../api/api";
 
 const SEASON_ORDER = ["winter", "spring", "summer", "autumn"];
 
@@ -185,21 +184,12 @@ export default function CompareResultsPage() {
       try {
         let selectedSimulation = simulationId;
         if (!selectedSimulation) {
-          const simulationsResponse = await fetch(`${API_URL}/simulations`);
-          if (!simulationsResponse.ok) throw new Error("Could not load simulations");
-          const simulationsData = await simulationsResponse.json();
+          const simulationsData = await api.getSimulations();
           selectedSimulation = simulationsData.simulations?.find(name => name !== "Original_Experiment");
           if (!selectedSimulation) throw new Error("No simulations available");
         }
 
-        const response = await fetch(
-          `${API_URL}/simulations/${encodeURIComponent(selectedSimulation)}/experiments`
-        );
-        if (!response.ok) {
-          const detail = await response.json().catch(() => null);
-          throw new Error(detail?.detail || "Could not load experiments");
-        }
-        const data = await response.json();
+        const data = await api.getExperiments(selectedSimulation);
         if (!active) return;
 
         const availableExperiments = data.experiments ?? [];
@@ -238,14 +228,8 @@ export default function CompareResultsPage() {
       try {
         const results = await Promise.all(
           experimentIds.map(async experimentId => {
-            const response = await fetch(
-              `${API_URL}/simulations/${encodeURIComponent(resolvedSimulationId)}/experiments/${encodeURIComponent(experimentId)}/kpis/community`
-            );
-            if (!response.ok) {
-              const detail = await response.json().catch(() => null);
-              throw new Error(detail?.detail || `Could not load KPIs for ${experimentId}`);
-            }
-            return [experimentId, await response.json()];
+            const data = await api.getCommunityKpis(resolvedSimulationId, experimentId);
+            return [experimentId, data];
           })
         );
         if (active) setExperimentKpis(Object.fromEntries(results));

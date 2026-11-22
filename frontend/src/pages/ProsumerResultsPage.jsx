@@ -4,8 +4,7 @@ import ResultsTabs from "../components/ResultsTabs";
 import ResultsPageHeader from "../components/ResultsPageHeader";
 import SectionHeading from "../components/SectionHeading";
 import KpiTable from "../components/KpiTable";
-
-const API_URL = "http://127.0.0.1:8000";
+import { api } from "../api/api";
 
 const columns = {
   energy: [
@@ -59,21 +58,12 @@ export default function ProsumerResultsPage() {
       try {
         let selectedSimulation = simulationId;
         if (!selectedSimulation) {
-          const simulationsResponse = await fetch(`${API_URL}/simulations`);
-          if (!simulationsResponse.ok) throw new Error("Could not load simulations");
-          const simulationsData = await simulationsResponse.json();
+          const simulationsData = await api.getSimulations();
           selectedSimulation = simulationsData.simulations?.find(name => name !== "Original_Experiment");
           if (!selectedSimulation) throw new Error("No simulations available");
         }
 
-        const response = await fetch(
-          `${API_URL}/simulations/${encodeURIComponent(selectedSimulation)}/experiments`
-        );
-        if (!response.ok) {
-          const detail = await response.json().catch(() => null);
-          throw new Error(detail?.detail || "Could not load experiments");
-        }
-        const data = await response.json();
+        const data = await api.getExperiments(selectedSimulation);
         if (!active) return;
         setResolvedSimulationId(selectedSimulation);
         setExperiments(data.experiments ?? []);
@@ -103,14 +93,7 @@ export default function ProsumerResultsPage() {
       setError(null);
       setProsumerData(null);
       try {
-        const response = await fetch(
-          `${API_URL}/simulations/${encodeURIComponent(effectiveSimulationId)}/experiments/${encodeURIComponent(alternative)}/kpis/prosumers`
-        );
-        if (!response.ok) {
-          const detail = await response.json().catch(() => null);
-          throw new Error(detail?.detail || "Could not load prosumer results");
-        }
-        const data = await response.json();
+        const data = await api.getProsumerKpis(effectiveSimulationId, alternative);
         if (!active) return;
         setProsumerData(data);
         const available = data.periods ?? [];

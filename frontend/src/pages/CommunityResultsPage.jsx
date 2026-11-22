@@ -6,8 +6,7 @@ import SectionHeading from "../components/SectionHeading";
 import DonutChart from "../components/DonutChart";
 import InfoButton from "../components/InfoButton";
 import { monthlyBills, monthlyCoverage } from "../data/communityResults";
-
-const API_URL = "http://127.0.0.1:8000";
+import { api } from "../api/api";
 
 const colors = {
   green: "#3e7b48",
@@ -67,12 +66,7 @@ export default function CommunityResultsPage() {
 
     const fetchExperiments = async () => {
       try {
-        const response = await fetch(`${API_URL}/simulations/${encodeURIComponent(simulationId)}/experiments`);
-        if (!response.ok) {
-          throw new Error("Could not load the available experiments");
-        }
-
-        const data = await response.json();
+        const data = await api.getExperiments(simulationId);
         if (cancelled) return;
 
         const availableExperiments = data.experiments ?? [];
@@ -111,16 +105,7 @@ export default function CommunityResultsPage() {
       setCommunityData(null);
 
       try {
-        const response = await fetch(
-          `http://127.0.0.1:8000/simulations/${encodeURIComponent(simulationId)}/experiments/${alternative}/kpis/community`
-        );
-
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body.detail || "Could not load community results");
-        }
-
-        const data = await response.json();
+        const data = await api.getCommunityKpis(simulationId, alternative);
         if (!cancelled) {
           setCommunityData(data);
           if (data.periods?.length) {

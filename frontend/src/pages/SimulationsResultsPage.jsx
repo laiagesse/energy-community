@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-
-const API_URL = "http://127.0.0.1:8000";
+import { api } from "../api/api";
 
 export default function SimulationsResultsPage() {
   const [searchParams] = useSearchParams();
@@ -13,12 +12,7 @@ export default function SimulationsResultsPage() {
   useEffect(() => {
     const fetchSimulations = async () => {
       try {
-        const response = await fetch(`${API_URL}/simulations`);
-        if (!response.ok) {
-          const detail = await response.json().catch(() => null);
-          throw new Error(detail?.detail || "Could not load available simulations");
-        }
-        const data = await response.json();
+        const data = await api.getSimulations();
         const available = data.simulations ?? [];
         setSimulations(available);
         setSelectedSimulation(current => available.includes(current) ? current : (available[0] || ""));
