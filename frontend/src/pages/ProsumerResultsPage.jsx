@@ -1,43 +1,18 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ResultsTabs from "../components/ResultsTabs";
 import ResultsPageHeader from "../components/ResultsPageHeader";
 import SectionHeading from "../components/SectionHeading";
 import KpiTable from "../components/KpiTable";
+import KpiChartExplorer from "../components/KpiChartExplorer";
 import { api } from "../api/api";
-
-const columns = {
-  energy: [
-    ["prosumer", "Prosumer"], ["selfConsumption", "Self-Consumption Ratio"], ["selfSufficiency", "Self-Sufficiency Ratio"],
-    ["gridDependency", "Grid Dependency"], ["netP2p", "Net P2P Balance"], ["p2pParticipation", "P2P Participation"],
-    ["sharedEnergy", "Shared energy (purchases − grid exports)"], ["p2pDeficit", "P2P trading index in deficit"], ["p2pSurplus", "P2P trading index in surplus"]
-  ],
-  economic: [
-    ["prosumer", "Prosumer"], ["finalBill", "Total final bill (€/month)"], ["saved", "Saved by entering community (€/month)"],
-    ["annualProfit", "Annual profit (annual return)"]
-  ],
-  social: [
-    ["prosumer", "Prosumer"], ["billReduction", "Bill reduction"], ["gainAppropriation", "EC gain appropriation"],
-    ["savingsAppropriation", "EC savings appropriation"], ["investmentContribution", "Contribution into EC investment"]
-  ],
-  environmental: [
-    ["prosumer", "Prosumer"], ["avoidedEmissions", "Avoided annual emissions (kg CO₂ eq/year)"],
-    ["environmentalImpact", "Environmental impact (with/without community)"], ["carbonDebt", "Upfront carbon debt"],
-    ["carbonPayback", "Total carbon payback time"]
-  ]
-};
-
-const sections = [
-  { id: "energy", title: "Energy KPIs", color: "#3e7b48" },
-  { id: "economic", title: "Economic KPIs", description: "Monthly values and annual returns per participant", color: "#b89b62" },
-  { id: "social", title: "Social KPIs", description: "Distribution of benefits, savings and investment", color: "#8a7799" },
-  { id: "environmental", title: "Environmental KPIs", color: "#3d5e80" }
-];
+import { PROSUMER_COLUMNS, PROSUMER_SECTIONS, getKpiMeta } from "../utils/prosumerKpiMeta";
 
 const SEASON_ORDER = ["winter", "spring", "summer", "autumn"];
 
 export default function ProsumerResultsPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const simulationId = searchParams.get("simulation");
   const [period, setPeriod] = useState("");
   const [resolvedSimulationId, setResolvedSimulationId] = useState(simulationId || "");
@@ -47,6 +22,7 @@ export default function ProsumerResultsPage() {
   const [loadingExperiments, setLoadingExperiments] = useState(true);
   const [loadingResults, setLoadingResults] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedKpis, setSelectedKpis] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -60,7 +36,6 @@ export default function ProsumerResultsPage() {
           selectedSimulation = simulationsData.simulations?.find(name => name !== "Original_Experiment");
           if (!selectedSimulation) throw new Error("No simulations available");
         }
-
         const data = await api.getExperiments(selectedSimulation);
         if (!active) return;
         setResolvedSimulationId(selectedSimulation);
@@ -80,24 +55,19 @@ export default function ProsumerResultsPage() {
     return () => { active = false; };
   }, [simulationId]);
 
-  const selectedExperiment = experiments.find(item => item.id === alternative);
-  const effectiveSimulationId = resolvedSimulationId;
-
   useEffect(() => {
-    if (!alternative || !effectiveSimulationId) return;
+    if (!alternative || !resolvedSimulationId) return;
     let active = true;
     const fetchProsumerResults = async () => {
       setLoadingResults(true);
       setError(null);
       setProsumerData(null);
       try {
-        const data = await api.getProsumerKpis(effectiveSimulationId, alternative);
+        const data = await api.getProsumerKpis(resolvedSimulationId, alternative);
         if (!active) return;
         setProsumerData(data);
         const available = data.periods ?? [];
-        if (!available.some(item => item.id === period)) {
-          setPeriod(available[0]?.id ?? "");
-        }
+        if (!available.some(item => item.id === period)) setPeriod(available[0]?.id ?? "");
       } catch (err) {
         if (active) setError(err.message);
       } finally {
@@ -106,13 +76,12 @@ export default function ProsumerResultsPage() {
     };
     fetchProsumerResults();
     return () => { active = false; };
-  }, [alternative, effectiveSimulationId]);
+  }, [alternative, resolvedSimulationId]);
 
   const periods = (prosumerData?.periods ?? [])
     .slice()
     .sort((a, b) => SEASON_ORDER.indexOf(a.id) - SEASON_ORDER.indexOf(b.id))
     .map(item => ({ id: item.id, label: item.label }));
-
   const selectedPeriodData = prosumerData?.periods?.find(item => item.id === period);
   const prosumers = selectedPeriodData?.prosumers ?? {};
   const prosumerRows = Object.entries(prosumers).map(([prosumer, kpis]) => {
@@ -121,17 +90,34 @@ export default function ProsumerResultsPage() {
     return row;
   });
 
+  const handleKpiToggle = (sectionId, key) => {
+    setSelectedKpis(current => {
+      const currentKeys = current[sectionId] ?? [];
+      if (currentKeys.includes(key)) {
+        return { ...current, [sectionId]: currentKeys.filter(item => item !== key) };
+      }
+      const newGroup = getKpiMeta(key).group;
+      const compatible = currentKeys.filter(item => getKpiMeta(item).group === newGroup);
+      return { ...current, [sectionId]: [...compatible, key] };
+    });
+  };
+
+  const openProsumer = prosumer => {
+    const query = searchParams.toString();
+    navigate(`/results/prosumers/${encodeURIComponent(prosumer)}${query ? `?${query}` : ""}`);
+  };
+
   if (loadingExperiments) return <p>Loading experiments...</p>;
-  if (error && !prosumerData) return <p>Error: {error}</p>;
+  if (error && !prosumerData) return <p role="alert">Error: {error}</p>;
   if (!experiments.length) return <p>No experiments available.</p>;
   if (loadingResults) return <p>Loading prosumer results...</p>;
-  if (error) return <p>Error: {error}</p>;
+  if (error) return <p role="alert">Error: {error}</p>;
   if (!prosumerData) return <p>No prosumer results available.</p>;
 
   return (
     <main className="page-width results-page prosumer-results-page">
       <ResultsPageHeader
-        simulationId={effectiveSimulationId}
+        simulationId={resolvedSimulationId}
         experiments={experiments}
         loadingExperiments={loadingExperiments}
         period={period}
@@ -142,18 +128,31 @@ export default function ProsumerResultsPage() {
       />
       <ResultsTabs />
       <div className="prosumer-table-intro">
-        <p>Expand a chart to get additional information for a KPI</p>
+        <p>Select the chart icon in an indicator heading to compare prosumers. Select a prosumer name to open its detail page.</p>
       </div>
-      {sections.map(section => (
-        <section className="result-section" key={section.id}>
-          <SectionHeading title={section.title} description={section.description} color={section.color} />
-          <KpiTable
-            columns={columns[section.id].map(([key, label]) => ({ key, label }))}
-            rows={prosumerRows}
-            label={`${section.title} by prosumer`}
-          />
-        </section>
-      ))}
+      {PROSUMER_SECTIONS.map(section => {
+        const sectionColumns = PROSUMER_COLUMNS[section.id].map(([key, label]) => ({ key, label }));
+        const sectionSelected = selectedKpis[section.id] ?? [];
+        return (
+          <section className="result-section" key={section.id}>
+            <SectionHeading title={section.title} description={section.description} color={section.color} />
+            <KpiTable
+              columns={sectionColumns}
+              rows={prosumerRows}
+              label={`${section.title} by prosumer`}
+              selectedKpis={sectionSelected}
+              onKpiToggle={key => handleKpiToggle(section.id, key)}
+              onProsumerClick={openProsumer}
+            />
+            <KpiChartExplorer
+              columns={sectionColumns}
+              rows={prosumerRows}
+              selectedKpis={sectionSelected}
+              onKpiToggle={key => handleKpiToggle(section.id, key)}
+            />
+          </section>
+        );
+      })}
     </main>
   );
 }
