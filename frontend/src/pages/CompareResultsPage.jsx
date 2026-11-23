@@ -1,16 +1,38 @@
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import ResultsPageHeader from "../components/ResultsPageHeader";
 import ResultsTabs from "../components/ResultsTabs";
-import {
-  initialScenarios,
-  defaultSelectedIndicators,
-  dimensions
-} from "../data/comparisonResults";
 import { api } from "../api/api";
+import { communityKpiSections, defaultSelectedIndicators } from "../data/communityKpiConfig";
 
 const SEASON_ORDER = ["winter", "spring", "summer", "autumn"];
+const SCENARIO_MARKERS = ["●", "■", "◆", "▲", "★", "⬟", "✦", "✚", "⬢", "✿", "◉", "✧", "⬣", "✪", "❖", "✳", "⬤", "◈", "✺", "✥"];
+const SCENARIO_COLORS = ["#3e7b48", "#b89b62", "#8b744b", "#3d5e80", "#8a7799", "#b65d4a", "#39858a", "#7c8541"];
+
+function alternativeLetter(index) {
+  let value = index + 1;
+  let label = "";
+  while (value > 0) {
+    value--;
+    label = String.fromCharCode(65 + value % 26) + label;
+    value = Math.floor(value / 26);
+  }
+  return label;
+}
+
+function scenarioPresentation(index) {
+  const marker = SCENARIO_MARKERS[index % SCENARIO_MARKERS.length];
+  const suffix = index >= SCENARIO_MARKERS.length
+    ? String(Math.floor(index / SCENARIO_MARKERS.length) + 1)
+    : "";
+  return {
+    id: `scenario-${index + 1}`,
+    label: `Alternative ${alternativeLetter(index)}`,
+    marker: `${marker}${suffix}`,
+    color: SCENARIO_COLORS[index % SCENARIO_COLORS.length]
+  };
+}
 
 // Formata els valors segons la unitat de cada indicador.
 function formatKpiValue(value, format) {
@@ -136,34 +158,27 @@ export default function CompareResultsPage() {
   const [experimentKpis, setExperimentKpis] = useState({});
   const [loadingKpis, setLoadingKpis] = useState(false);
 
+  const allIndicators = communityKpiSections.flatMap(section =>
+    section.indicators.map(indicator => ({
+      ...indicator,
+      category: section.title,
+      sectionId: section.id,
+      color: section.color
+    }))
+  );
+
   const [selected, setSelected] = useState(defaultSelectedIndicators);
   const [applied, setApplied] = useState(defaultSelectedIndicators);
-
-  const allIndicators = useMemo(
-    () => dimensions.flatMap(dimension => dimension.indicators),
-    []
-  );
-
-  const selectedDimensions = dimensions
-    .filter(dimension =>
-      dimension.indicators.some(indicator => selected.includes(indicator.id))
+  const selectedDimensions = communityKpiSections
+    .filter(section =>
+      section.indicators.some(indicator => selected.includes(indicator.id))
     )
-    .map(dimension => dimension.id);
+    .map(section => section.id);
 
-  const selectedRows = allIndicators.filter(
-    indicator => applied.includes(indicator.id)
-  );
+  const selectedRows = allIndicators.filter(indicator => applied.includes(indicator.id));
 
-  const toggleIndicator = id => {
-    setSelected(current =>
-      current.includes(id)
-        ? current.filter(item => item !== id)
-        : [...current, id]
-    );
-  };
-
-  const toggleDimension = dimension => {
-    const ids = dimension.indicators.map(item => item.id);
+  const toggleDimension = section => {
+    const ids = section.indicators.map(indicator => indicator.id);
     const allSelected = ids.every(id => selected.includes(id));
 
     setSelected(current =>
@@ -173,8 +188,12 @@ export default function CompareResultsPage() {
     );
   };
 
-  const toggleAll = dimension => {
-    toggleDimension(dimension);
+  const toggleIndicator = id => {
+    setSelected(current =>
+      current.includes(id)
+        ? current.filter(item => item !== id)
+        : [...current, id]
+    );
   };
 
   // Carrega els experiments de la simulació seleccionada.
@@ -196,10 +215,10 @@ export default function CompareResultsPage() {
         setResolvedSimulationId(selectedSimulation);
         setExperiments(availableExperiments);
         setScenarios(
-          availableExperiments.slice(0, Math.min(2, initialScenarios.length)).map((experiment, index) => ({
-            ...initialScenarios[index],
+          availableExperiments.slice(0, Math.min(2, availableExperiments.length)).map((experiment, index) => ({
+            ...scenarioPresentation(index),
             experimentId: experiment.id,
-            experimentName: experiment.name,
+            experimentName: experiment.name
           }))
         );
         const seasonIds = [...new Set(
@@ -264,44 +283,30 @@ export default function CompareResultsPage() {
     );
   };
 
-  // Elimina un escenari, mantenint-ne sempre dos com a mínim.
+  // Elimina qualsevol alternativa.
   const removeScenario = id => {
-    setScenarios(current =>
-      current.length > 2
-        ? current.filter(scenario => scenario.id !== id)
-        : current
-    );
+    setScenarios(current => current.filter(scenario => scenario.id !== id));
   };
 
-  // Afegeix un nou escenari amb un experiment encara no seleccionat.
+  // Afegeix el primer experiment que encara no s'estigui comparant.
   const addScenario = () => {
-    if (scenarios.length >= 3) return;
-
     const availableExperiment = experiments.find(
-      experiment =>
-        !scenarios.some(
-          scenario => scenario.experimentId === experiment.id
-        )
+      experiment => !scenarios.some(scenario => scenario.experimentId === experiment.id)
     );
-
     if (!availableExperiment) return;
 
-    const letter = ["A", "B", "C"].find(
-      item =>
-        !scenarios.some(scenario => scenario.id === `scenario-${item.toLowerCase()}`)
-    );
-
-    if (!letter) return;
+    const usedIndexes = scenarios
+      .map(scenario => Number(scenario.id.replace("scenario-", "")) - 1)
+      .filter(Number.isInteger);
+    let nextIndex = 0;
+    while (usedIndexes.includes(nextIndex)) nextIndex++;
 
     setScenarios(current => [
       ...current,
       {
-        id: `scenario-${letter.toLowerCase()}`,
-        label: `Experiment ${current.length + 1}`,
+        ...scenarioPresentation(nextIndex),
         experimentId: availableExperiment.id,
-        experimentName: availableExperiment.name,
-        color: "#8b744b",
-        marker: "◆"
+        experimentName: availableExperiment.name
       }
     ]);
   };
@@ -331,42 +336,34 @@ export default function CompareResultsPage() {
             <article className="scenario-card" key={scenario.id}>
               <div className="scenario-card-top">
                 <span className="scenario-name">
-                  <i style={{ color: scenario.color }}>
-                    {scenario.marker}
-                  </i>
-                  {scenario.label}
+                  <i style={{ color: scenario.color }}>{scenario.marker}</i>
+                  <span style={{ color: scenario.color }}>{scenario.label}</span>
                 </span>
-
                 <button
                   type="button"
                   className="icon-button"
                   aria-label={`Remove ${scenario.label}`}
                   onClick={() => removeScenario(scenario.id)}
-                  disabled={scenarios.length <= 2}
                 >
                   ✖
                 </button>
               </div>
 
-              <strong>{scenario.label}</strong>
-
-              <label
-                className="sr-only"
-                htmlFor={`${scenario.id}-select`}
-              >
+              <label className="sr-only" htmlFor={`${scenario.id}-select`}>
                 Choose experiment
               </label>
-
               <select
                 id={`${scenario.id}-select`}
                 value={scenario.experimentId ?? ""}
-                onChange={event =>
-                  changeScenario(scenario.id, event.target.value)
-                }
+                onChange={event => changeScenario(scenario.id, event.target.value)}
                 disabled={!experiments.length}
               >
                 {experiments.map(experiment => (
-                  <option key={experiment.id} value={experiment.id}>
+                  <option
+                    key={experiment.id}
+                    value={experiment.id}
+                    disabled={scenarios.some(item => item.id !== scenario.id && item.experimentId === experiment.id)}
+                  >
                     {experiment.name}
                   </option>
                 ))}
@@ -379,9 +376,9 @@ export default function CompareResultsPage() {
           type="button"
           className="add-scenario-button"
           onClick={addScenario}
-          disabled={!experiments.length}
+          disabled={!experiments.some(experiment => !scenarios.some(scenario => scenario.experimentId === experiment.id))}
         >
-          ＋ Add scenario
+          ＋ Add alternative
         </button>
       </section>
 
@@ -395,18 +392,16 @@ export default function CompareResultsPage() {
         </div>
 
         <div className="dimension-chips">
-          {dimensions.map(dimension => (
+          {communityKpiSections.map(section => (
             <button
-              key={dimension.id}
+              key={section.id}
               type="button"
-              className={
-                selectedDimensions.includes(dimension.id) ? "selected" : ""
-              }
-              style={{ "--dimension-color": dimension.color }}
-              onClick={() => toggleDimension(dimension)}
+              className={selectedDimensions.includes(section.id) ? "selected" : ""}
+              style={{ "--dimension-color": section.color }}
+              onClick={() => toggleDimension(section)}
             >
-              {selectedDimensions.includes(dimension.id) ? "✓" : "+"}{" "}
-              {dimension.label}
+              {selectedDimensions.includes(section.id) ? "✓" : "+"}{" "}
+              {section.title}
             </button>
           ))}
         </div>
@@ -420,9 +415,7 @@ export default function CompareResultsPage() {
           <div className="catalog-actions">
             <button
               type="button"
-              onClick={() =>
-                setSelected(allIndicators.map(item => item.id))
-              }
+              onClick={() => setSelected(allIndicators.map(item => item.id))}
             >
               Select all
             </button>
@@ -436,31 +429,38 @@ export default function CompareResultsPage() {
           </div>
 
           <div className="indicator-groups">
-            {dimensions.map(dimension => (
-              <section className="indicator-group" key={dimension.id}>
-                <button
-                  type="button"
-                  className="indicator-group-title"
-                  onClick={() => toggleAll(dimension)}
-                  style={{ color: dimension.color }}
-                >
-                  <span>{dimension.icon}</span>
-                  {dimension.label}
-                  <span className="chevron">⌃</span>
-                </button>
+            {communityKpiSections.map(section => {
+              const allSelected = section.indicators.every(indicator =>
+                selected.includes(indicator.id)
+              );
 
-                {dimension.indicators.map(indicator => (
-                  <label className="indicator-option" key={indicator.id}>
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(indicator.id)}
-                      onChange={() => toggleIndicator(indicator.id)}
-                    />
-                    <span>{indicator.label}</span>
-                  </label>
-                ))}
-              </section>
-            ))}
+              return (
+                <section className="indicator-group" key={section.id}>
+                  <button
+                    type="button"
+                    className="indicator-group-title"
+                    onClick={() => toggleDimension(section)}
+                    style={{ color: section.color }}
+                  >
+                    {section.title}
+                    <span className="chevron">
+                      {allSelected ? "✓" : "+"}
+                    </span>
+                  </button>
+
+                  {section.indicators.map(indicator => (
+                    <label className="indicator-option" key={indicator.id}>
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(indicator.id)}
+                        onChange={() => toggleIndicator(indicator.id)}
+                      />
+                      <span>{indicator.label}</span>
+                    </label>
+                  ))}
+                </section>
+              );
+            })}
           </div>
 
           <p className="catalog-note">
@@ -524,11 +524,7 @@ export default function CompareResultsPage() {
                     <td className="indicator-column">
                       <strong
                         style={{
-                          borderColor: dimensions.find(dimension =>
-                            dimension.indicators.some(
-                              item => item.id === indicator.id
-                            )
-                          )?.color
+                          borderColor: indicator.color
                         }}
                       >
                         {indicator.label}
@@ -553,7 +549,7 @@ export default function CompareResultsPage() {
                       );
 
                       return (
-                        <td key={scenario.id}>
+                        <td key={scenario.id} style={{ textAlign: "left" }}>
                           <span
                             className={
                               best === index && value !== null
