@@ -493,9 +493,7 @@ export default function CompareResultsPage() {
           <table className="comparison-table">
             <thead>
               <tr>
-                <th className="indicator-column">
-                  Indicator
-                </th>
+                <th className="indicator-column">Indicator</th>
 
                 {scenarios.map(scenario => (
                   <th key={scenario.id}>

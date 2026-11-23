@@ -41,6 +41,7 @@ export default function CommunityResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredCoverage, setHoveredCoverage] = useState(null);
+  const [billSort, setBillSort] = useState({ key: null, direction: "asc" });
   const [coverageMousePosition, setCoverageMousePosition] = useState({
     x: 0,
     y: 0
@@ -145,6 +146,18 @@ export default function CommunityResultsPage() {
     };
   });
 
+  const sortedMonthlyBills = billSort.key === null ? monthlyBills : [...monthlyBills].sort((a, b) => {
+    const parseCell = value => {
+      const normalized = String(value ?? "").replace(/[^0-9,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
+      const number = normalized.trim() === "" ? NaN : Number(normalized);
+      return Number.isFinite(number) ? number : String(value ?? "").toLocaleLowerCase();
+    };
+    const av = parseCell(a[billSort.key]);
+    const bv = parseCell(b[billSort.key]);
+    const result = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv), undefined, { numeric: true });
+    return billSort.direction === "asc" ? result : -result;
+  });
+
   return (
     <main className="page-width results-page community-results-page">
       <ResultsPageHeader
@@ -180,7 +193,7 @@ export default function CommunityResultsPage() {
 
       <section className="summary-grid">
         <IndicatorCard
-          title="Total savings"
+          title="Total saved"
           description="Monthly community savings"
           value={kpis.totalSaved ? `${kpis.totalSaved.value.toFixed(0)} €` : "—"}
           className="summary-card"
@@ -458,7 +471,7 @@ export default function CommunityResultsPage() {
         <SectionHeading title="Economics" color={colors.ochre}/>
         <div className="economics-summary-grid">
           <IndicatorCard
-            title="Total savings"
+            title="Total saved"
             description="Estimated monthly economic savings"
             value={kpis.totalSaved?.value != null
               ? `${kpis.totalSaved.value.toFixed(0)} €`
@@ -510,14 +523,40 @@ export default function CommunityResultsPage() {
             <table className="results-table">
               <thead>
                 <tr>
-                  <th>Month</th>
-                  <th>Bill without community</th>
-                  <th>Bill with community</th>
-                  <th>Saved</th>
+                  {[
+                    ["Month", 0],
+                    ["Bill without community", 1],
+                    ["Bill with community", 2],
+                    ["Saved", 3]
+                  ].map(([label, key]) => (
+                    <th key={key} aria-sort={billSort.key === key ? (billSort.direction === "asc" ? "ascending" : "descending") : "none"}>
+                      <div className="table-sort-heading">
+                        <span>{label}</span>
+                        <span className="table-sort-triangles">
+                          <button
+                            type="button"
+                            className={`table-sort-triangle${billSort.key === key && billSort.direction === "asc" ? " is-active" : ""}`}
+                            aria-label="Sort from lowest to highest"
+                            title="Sort from lowest to highest"
+                            aria-pressed={billSort.key === key && billSort.direction === "asc"}
+                            onClick={() => setBillSort({ key, direction: "asc" })}
+                          >▲</button>
+                          <button
+                            type="button"
+                            className={`table-sort-triangle${billSort.key === key && billSort.direction === "desc" ? " is-active" : ""}`}
+                            aria-label="Sort from highest to lowest"
+                            title="Sort from highest to lowest"
+                            aria-pressed={billSort.key === key && billSort.direction === "desc"}
+                            onClick={() => setBillSort({ key, direction: "desc" })}
+                          >▼</button>
+                        </span>
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {monthlyBills.map(row => (
+                {sortedMonthlyBills.map(row => (
                   <tr key={row[0]}>
                     <td>{row[0]}</td>
                     <td>{row[1]}</td>

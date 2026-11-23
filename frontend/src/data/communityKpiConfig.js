@@ -17,7 +17,7 @@ export const communityKpiSections = [
     indicators: [
       {
         id: "totalFinalBill",
-        label: "Community total final bill (€)",
+        label: "Community final bill (€)",
         direction: "lower",
         format: "currency"
       },

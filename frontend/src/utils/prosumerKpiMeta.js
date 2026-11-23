@@ -19,23 +19,23 @@ export const PROSUMER_COLUMNS = {
   ],
   economic: [
     ["prosumer", "Prosumer"],
-    ["finalBill", "Total final bill (€/month)"],
-    ["saved", "Saved by entering community (€/month)"],
-    ["annualProfit", "Annual profit (annual return)"]
+    ["finalBill", "Final bill"],
+    ["saved", "Saved by entering community"],
+    ["annualProfit", "Annual profit (Return on investment)"]
   ],
   social: [
     ["prosumer", "Prosumer"],
     ["billReduction", "Bill reduction"],
-    ["gainAppropriation", "EC gain appropriation"],
-    ["savingsAppropriation", "EC savings appropriation"],
-    ["investmentContribution", "Contribution into EC investment"]
+    ["gainAppropriation", "Community gains appropriation"],
+    ["savingsAppropriation", "Community savings appropriation"],
+    ["investmentContribution", "Investment contribution"]
   ],
   environmental: [
     ["prosumer", "Prosumer"],
-    ["avoidedEmissions", "Avoided annual emissions (kg CO₂ eq/year)"],
-    ["environmentalImpact", "Environmental impact (with/without community)"],
-    ["carbonDebt", "Upfront carbon debt"],
-    ["carbonPayback", "Total carbon payback time"]
+    ["avoidedEmissions", "Annual avoided emissions"],
+    ["environmentalImpact", "Environmental impact"],
+    ["carbonDebt", "Carbon debt"],
+    ["carbonPayback", "Carbon payback time"]
   ]
 };
 
@@ -45,21 +45,21 @@ export const KPI_META = {
   selfConsumption: { unit: "%", group: "energy-ratios", scale: 100 },
   selfSufficiency: { unit: "%", group: "energy-ratios", scale: 100 },
   gridDependency: { unit: "%", group: "energy-ratios", scale: 100 },
-  p2pParticipation: { unit: "%", group: "energy-ratios", scale: 100 },
+  p2pParticipation: { unit: "kWh", group: "energy-volume", scale: 1 },
   netP2p: { unit: "kWh", group: "energy-volume", scale: 1 },
   sharedEnergy: { unit: "kWh", group: "energy-volume", scale: 1 },
-  p2pDeficit: { unit: "index", group: "p2p-deficit", scale: 1 },
-  p2pSurplus: { unit: "index", group: "p2p-surplus", scale: 1 },
+  p2pDeficit: { unit: "%", group: "p2p-deficit", scale: 100 },
+  p2pSurplus: { unit: "%", group: "p2p-surplus", scale: 100 },
   finalBill: { unit: "€/month", group: "monthly-euros", scale: 1 },
   saved: { unit: "€/month", group: "monthly-euros", scale: 1 },
-  annualProfit: { unit: "annual return", group: "annual-profit", scale: 1 },
-  billReduction: { unit: "value", group: "bill-reduction", scale: 1 },
-  gainAppropriation: { unit: "value", group: "gain-appropriation", scale: 1 },
-  savingsAppropriation: { unit: "value", group: "savings-appropriation", scale: 1 },
-  investmentContribution: { unit: "value", group: "investment-contribution", scale: 1 },
+  annualProfit: { unit: "%", group: "annual-profit", scale: 100 },
+  billReduction: { unit: "%", group: "bill-reduction", scale: 100 },
+  gainAppropriation: { unit: "%", group: "gain-appropriation", scale: 100 },
+  savingsAppropriation: { unit: "%", group: "savings-appropriation", scale: 100 },
+  investmentContribution: { unit: "%", group: "investment-contribution", scale: 100 },
   avoidedEmissions: { unit: "kg CO₂ eq/year", group: "avoided-emissions", scale: 1 },
-  environmentalImpact: { unit: "value", group: "environmental-impact", scale: 1 },
-  carbonDebt: { unit: "value", group: "carbon-debt", scale: 1 },
+  environmentalImpact: { unit: "%", group: "environmental-impact", scale: 100 },
+  carbonDebt: { unit: "kg CO₂ eq", group: "carbon-debt", scale: 1 },
   carbonPayback: { unit: "years", group: "carbon-payback", scale: 1 }
 };
 
