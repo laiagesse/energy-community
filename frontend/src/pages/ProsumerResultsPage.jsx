@@ -104,7 +104,9 @@ export default function ProsumerResultsPage() {
 
   const openProsumer = prosumer => {
     const query = searchParams.toString();
-    navigate(`/results/prosumers/${encodeURIComponent(prosumer)}${query ? `?${query}` : ""}`);
+    const params = new URLSearchParams(query);
+    params.set("prosumer", prosumer);
+    navigate(`/results/prosumer-detail?${params.toString()}`);
   };
 
   if (loadingExperiments) return <p>Loading experiments...</p>;
@@ -128,7 +130,7 @@ export default function ProsumerResultsPage() {
       />
       <ResultsTabs />
       <div className="prosumer-table-intro">
-        <p>Select the chart icon in an indicator heading to compare prosumers. Select a prosumer name to open its detail page.</p>
+        <p>Select the chart icon in an indicator heading to compare prosumers. Select a prosumer name to open its details in the Prosumer details tab.</p>
       </div>
       {PROSUMER_SECTIONS.map(section => {
         const sectionColumns = PROSUMER_COLUMNS[section.id].map(([key, label]) => ({ key, label }));

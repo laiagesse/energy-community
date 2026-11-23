@@ -8,8 +8,8 @@ export const PROSUMER_SECTIONS = [
 export const PROSUMER_COLUMNS = {
   energy: [
     ["prosumer", "Prosumer"],
-    ["selfConsumption", "Self-Consumption Ratio"],
-    ["selfSufficiency", "Self-Sufficiency Ratio"],
+    ["selfConsumption", "Self-Consumption"],
+    ["selfSufficiency", "Self-Sufficiency"],
     ["gridDependency", "Grid Dependency"],
     ["netP2p", "Net P2P Balance"],
     ["p2pParticipation", "P2P Participation"],

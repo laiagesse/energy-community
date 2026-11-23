@@ -30,7 +30,7 @@ export default function App() {
     <Route path="/results" element={<SimulationsResultsPage/>} />
     <Route path="/results/community" element={<CommunityResultsPage />} />
     <Route path="/results/prosumers" element={<ProsumerResultsPage />} />
-    <Route path="/results/prosumers/:prosumerId" element={<ProsumerDetailResultsPage />} />
+    <Route path="/results/prosumer-detail" element={<ProsumerDetailResultsPage />} />
     <Route path="/results/compare" element={<CompareResultsPage />} />
     <Route path="/how-it-works" element={<Placeholder title="How It Works" />} />
     <Route path="/examples" element={<Placeholder title="Examples" />} />
