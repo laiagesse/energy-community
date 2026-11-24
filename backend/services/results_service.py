@@ -4,11 +4,8 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = PROJECT_ROOT / "Results" / "Results_DOE"
-DEFAULT_SIMULATION_ID = None
-
 FACTORS = ["P2P Method", "Battery", "Tariff", "Consumption", "PV Installed", "WT Installed"]
-SEASON_ORDER = ["Winter", "Spring", "Summer", "Autumn"]
-PERIOD_ORDER = ["winter", "spring", "summer", "autumn"]
+PERIOD_COLUMNS = ("Month", "Season", "Period")
 
 P2P_FILE_MAPPING = {
     "Market": "P2P_market",
@@ -96,30 +93,41 @@ def _to_json_number(value):
     return int(number) if number.is_integer() else number
 
 
-def _default_simulation_id() -> str:
-    """Return the first available new-format simulation (never Original_Experiment)."""
-    if not RESULTS_ROOT.exists():
-        raise FileNotFoundError(f"No s'ha trobat la carpeta de resultats: {RESULTS_ROOT}")
-    names = sorted(
-        p.name for p in RESULTS_ROOT.iterdir()
-        if p.is_dir() and not p.name.startswith(".") and p.name != "Original_Experiment"
-    )
-    if not names:
-        raise FileNotFoundError("No hi ha cap simulació en el format nou a Results_DOE.")
-    return names[0]
+def _period_column(df: pd.DataFrame) -> str:
+    populated_columns = [
+        column for column in PERIOD_COLUMNS
+        if column in df.columns
+        and df[column].dropna().astype(str).str.strip().ne("").any()
+    ]
+    if len(populated_columns) > 1:
+        raise ValueError(
+            "El fitxer mestre ha de tenir una sola columna de període "
+            "amb dades: " + ", ".join(populated_columns)
+        )
+    if not populated_columns:
+        raise ValueError(
+            "El fitxer mestre ha de contenir una columna amb períodes: "
+            + ", ".join(PERIOD_COLUMNS)
+        )
+    return populated_columns[0]
 
 
 def get_experiments(simulation_id: str | None = None) -> dict:
-    """Read experiment configurations from the new two-row-header DoE workbook."""
-    simulation_id = simulation_id or _default_simulation_id()
+    """Read experiment configurations and their periods from a DoE workbook."""
+    if not simulation_id:
+        return {
+            "simulation_id": None,
+            "experiments": [],
+            "message": "No hi ha cap simulació seleccionada.",
+        }
     _, master_file, _ = _simulation_files(simulation_id)
     if not master_file.is_file():
         raise FileNotFoundError(f"No s'ha trobat el fitxer mestre: {master_file}")
 
-    # New format: row 1 contains grouped headings; row 2 contains field names.
     df = pd.read_excel(master_file, sheet_name="Community DoE", header=1)
     df.columns = [str(column).strip() for column in df.columns]
-    required = FACTORS + ["Season", "Experiment_ID"]
+    period_column = _period_column(df)
+    required = FACTORS + [period_column, "Experiment_ID"]
     missing = [column for column in required if column not in df.columns]
     if missing:
         raise ValueError(
@@ -127,39 +135,37 @@ def get_experiments(simulation_id: str | None = None) -> dict:
             "Falten columnes: " + ", ".join(missing)
         )
 
-    df = df.dropna(subset=["Experiment_ID", "Season", "P2P Method"])
-    df["Season"] = df["Season"].astype(str).str.strip().str.capitalize()
-    unknown_seasons = sorted(set(df["Season"]) - set(SEASON_ORDER))
-    if unknown_seasons:
-        raise ValueError("Temporades no reconegudes al fitxer mestre: " + ", ".join(unknown_seasons))
+    df = df.dropna(subset=["Experiment_ID", period_column, "P2P Method"]).copy()
+    df["_period_label"] = df[period_column].astype(str).str.strip()
+    df = df[df["_period_label"].ne("")].copy()
+    df["_period_id"] = df["_period_label"].str.lower()
 
     experiments = []
-    # Cada configuració pot tenir només una part de les temporades.
-    # Es conserven únicament les que existeixen al fitxer mestre.
     for factor_values, group in df.groupby(FACTORS, sort=False, dropna=False):
         factors = dict(zip(FACTORS, factor_values))
         experiment_ids = {}
-        available_seasons = [
-            season for season in SEASON_ORDER
-            if (group["Season"] == season).any()
-        ]
-        for season in available_seasons:
-            season_rows = group[group["Season"] == season]
-            if len(season_rows) != 1:
+        available_periods = []
+        period_ids = dict.fromkeys(group["_period_id"].tolist())
+        for period_id in period_ids:
+            period_rows = group[group["_period_id"] == period_id]
+            if len(period_rows) != 1:
                 raise ValueError(
-                    f"Configuració {factors}: s'esperava una fila per a {season} "
-                    f"i se n'han trobat {len(season_rows)}."
+                    f"Configuració {factors}: s'esperava una fila per a {period_id} "
+                    f"i se n'han trobat {len(period_rows)}."
                 )
-            raw_id = season_rows.iloc[0]["Experiment_ID"]
+            period_label = str(period_rows.iloc[0]["_period_label"])
+            raw_id = period_rows.iloc[0]["Experiment_ID"]
             if pd.isna(raw_id):
-                raise ValueError(f"Experiment_ID buit per a {season}: {factors}")
-            experiment_ids[season] = int(raw_id)
+                raise ValueError(f"Experiment_ID buit per a {period_label}: {factors}")
+            experiment_ids[period_label] = int(raw_id)
+            available_periods.append({"id": period_id, "label": period_label})
 
         if experiment_ids:
             experiments.append({
                 "factors": factors,
                 "run_orders": experiment_ids,
-                "available_seasons": available_seasons,
+                "available_periods": available_periods,
+                "period_type": period_column.lower(),
             })
 
     def is_baseline(item):
@@ -189,10 +195,12 @@ def get_experiments(simulation_id: str | None = None) -> dict:
                 "name": item["name"],
                 "factors": item["factors"],
                 "run_orders": item["run_orders"],
-                "available_seasons": item["available_seasons"],
+                "available_periods": item["available_periods"],
+                "period_type": item["period_type"],
             }
             for item in experiments
         ],
+        "period_type": period_column.lower(),
     }
 
 
@@ -204,11 +212,13 @@ def _load_experiment(simulation_id: str, experiment_id: str) -> dict:
     return experiment
 
 
-def _checkpoint_path(checkpoint_folder: Path, run_order: int, season: str, p2p_method: str) -> Path:
+def _checkpoint_path(checkpoint_folder: Path, run_order: int, period: str, p2p_method: str) -> Path:
     mapped = P2P_FILE_MAPPING.get(str(p2p_method).strip())
     if mapped is None:
         raise ValueError(f"Mètode P2P no reconegut: {p2p_method}")
-    path = checkpoint_folder / f"Exp_{run_order}_{season}_{mapped}.xlsx"
+    if not period or period in {".", ".."} or Path(period).name != period:
+        raise ValueError(f"Període no vàlid: {period}")
+    path = checkpoint_folder / f"Exp_{run_order}_{period}_{mapped}.xlsx"
     if not path.is_file():
         raise FileNotFoundError(f"No s'ha trobat el checkpoint: {path}")
     return path
@@ -219,19 +229,18 @@ def get_experiment_community_kpis(simulation_id: str, experiment_id: str) -> dic
     _, _, checkpoint_folder = _simulation_files(simulation_id)
     p2p_method = experiment["factors"]["P2P Method"]
     periods = []
-    for season in PERIOD_ORDER:
-        season_name = season.capitalize()
-        if season_name not in experiment["run_orders"]:
-            continue
-        run_order = experiment["run_orders"][season_name]
-        checkpoint = _checkpoint_path(checkpoint_folder, run_order, season, p2p_method)
+    for period in experiment["available_periods"]:
+        period_id = period["id"]
+        period_label = period["label"]
+        run_order = experiment["run_orders"][period_label]
+        checkpoint = _checkpoint_path(checkpoint_folder, run_order, period_id, p2p_method)
         stats = pd.read_excel(checkpoint, sheet_name="Community KPIs", index_col=0)
         kpis = {}
         for api_key, original_name in COMMUNITY_KPIS.items():
             if original_name in stats.index:
                 kpis[api_key] = {"value": _to_json_number(stats.loc[original_name].get("mean"))}
-        periods.append({"id": season, "label": season.capitalize(), "kpis": kpis})
-    return {"simulation_id": simulation_id, "experiment_id": experiment_id, "type": "community", "period_type": "season", "periods": periods}
+        periods.append({"id": period_id, "label": period_label, "kpis": kpis})
+    return {"simulation_id": simulation_id, "experiment_id": experiment_id, "type": "community", "period_type": experiment["period_type"], "periods": periods}
 
 
 def get_experiment_prosumer_kpis(simulation_id: str, experiment_id: str) -> dict:
@@ -239,12 +248,11 @@ def get_experiment_prosumer_kpis(simulation_id: str, experiment_id: str) -> dict
     _, _, checkpoint_folder = _simulation_files(simulation_id)
     p2p_method = experiment["factors"]["P2P Method"]
     periods = []
-    for season in PERIOD_ORDER:
-        season_name = season.capitalize()
-        if season_name not in experiment["run_orders"]:
-            continue
-        run_order = experiment["run_orders"][season_name]
-        checkpoint = _checkpoint_path(checkpoint_folder, run_order, season, p2p_method)
+    for period in experiment["available_periods"]:
+        period_id = period["id"]
+        period_label = period["label"]
+        run_order = experiment["run_orders"][period_label]
+        checkpoint = _checkpoint_path(checkpoint_folder, run_order, period_id, p2p_method)
         stats = pd.read_excel(checkpoint, sheet_name="Prosumer KPIs")
         required = {"Prosumer", "KPI", "mean"}
         missing = required.difference(stats.columns)
@@ -260,19 +268,5 @@ def get_experiment_prosumer_kpis(simulation_id: str, experiment_id: str) -> dict
             api_key = next((key for key, name in PROSUMER_KPIS.items() if name == original_name), None)
             if api_key:
                 prosumers.setdefault(prosumer, {})[api_key] = {"value": _to_json_number(row["mean"])}
-        periods.append({"id": season, "label": season.capitalize(), "prosumers": prosumers})
-    return {"simulation_id": simulation_id, "experiment_id": experiment_id, "type": "prosumers", "period_type": "season", "periods": periods}
-
-
-# Wrappers for API routes that do not receive a simulation_id.
-# They deliberately select only new-format simulations.
-def get_default_experiments() -> dict:
-    return get_experiments(_default_simulation_id())
-
-
-def get_prosumer_kpis() -> dict:
-    simulation_id = _default_simulation_id()
-    experiments = get_experiments(simulation_id)["experiments"]
-    if not experiments:
-        raise ValueError("No s'han trobat experiments.")
-    return get_experiment_prosumer_kpis(simulation_id, experiments[0]["id"])
+        periods.append({"id": period_id, "label": period_label, "prosumers": prosumers})
+    return {"simulation_id": simulation_id, "experiment_id": experiment_id, "type": "prosumers", "period_type": experiment["period_type"], "periods": periods}

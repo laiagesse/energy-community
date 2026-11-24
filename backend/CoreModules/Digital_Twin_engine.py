@@ -1252,8 +1252,8 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
     
     economic_kpis = pd.DataFrame(index=[f"P{i+1}" for i in range(num_prosumers)])
 
-    economic_kpis['Total final bill in € per month']= net_final_bill*anual_scaling_factor/12
-    economic_kpis['Saved by entering community € per month']= saved_money*anual_scaling_factor/12
+    economic_kpis['Total final bill in € per month']= net_final_bill
+    economic_kpis['Saved by entering community € per month']= saved_money
     economic_kpis['Anual profit in %'] = np.divide((total_profit_investment * anual_scaling_factor * 100), total_invested, out=np.zeros_like(total_invested, dtype=float), where=(total_invested != 0)).round(4)
     economic_kpis['Anual profit PV in %'] = np.divide((PV_profit * anual_scaling_factor * 100), invested_pv, out=np.zeros_like(invested_pv, dtype=float), where=(invested_pv != 0)).round(4)
     economic_kpis['Anual profit WT in %'] = np.divide((WT_profit * anual_scaling_factor * 100), invested_wt, out=np.zeros_like(invested_wt, dtype=float), where=(invested_wt != 0)).round(4)  
@@ -1285,8 +1285,8 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
     community["Self-sufficiency difference between prosumers"] = kpis["Self-Sufficiency Ratio"].max() - kpis["Self-Sufficiency Ratio"].min()
     community["Community Grid Dependency"] = round(G2P.sum() / total_load.sum(), 4) if total_load.sum() != 0 else 0
     community["Community Self-Consumption"] = round((own_consump.sum()) / E_total.sum(), 4) if E_total.sum() != 0 else 0
-    community["Community total final bill in €"] = net_final_bill.sum() * anual_scaling_factor/12
-    community["Community total saved in €"] = saved_money.sum() * anual_scaling_factor/12
+    community["Community total final bill in €"] = net_final_bill.sum()
+    community["Community total saved in €"] = saved_money.sum()
     community["Fairness index"] = (1 / num_prosumers) * (((x_m.sum())**2) / (x_m**2).sum()) if (x_m**2).sum() != 0 else 0 #From Bara & Oprea (2023)
     community['Baseline poverty help'] = saved_money.sum() / hypothetical_consumption_cost.mean() if hypothetical_consumption_cost.mean() != 0 else 0
     community['Avoided anual emissions (Kg CO2 eq)']= annual_previous_emissions.sum()-anual_hardware_emissions.sum()-annual_current_grid_emissions.sum()

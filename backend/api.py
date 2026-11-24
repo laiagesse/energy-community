@@ -7,7 +7,6 @@ from services.results_service import (
     get_experiments,
     get_experiment_community_kpis,
     get_experiment_prosumer_kpis,
-    get_prosumer_kpis,
     list_simulations,
 )
 from fastapi.middleware.cors import CORSMiddleware
@@ -441,6 +440,7 @@ def run_simulation(request: SimulationRequest):
     }
 
 """
+"""
 @app.get(
     "/simulation/{simulation_id}/status",
     response_model=SimulationStatusResponse,
@@ -448,9 +448,10 @@ def run_simulation(request: SimulationRequest):
     summary="Get simulation status",
 )
 def get_simulation_status(experiment_id: str):
-    """
+    """"""
     Return the status and progress of a background simulation.
     """
+"""
     return {
         "experiment_id": experiment_id,
         "status": SimulationStatus.pending,
@@ -495,7 +496,7 @@ def read_default_prosumer_kpis(experiment_id: str):
     except (ValueError, FileNotFoundError) as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
-
+"""
 @app.get("/simulations")
 def get_simulations():
     try:

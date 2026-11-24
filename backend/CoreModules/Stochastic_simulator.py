@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import skew
 import scipy.stats as stats
 from scipy.stats import norm, beta
+import calendar
 import os
 ##########################################################
 
@@ -534,20 +535,28 @@ def run_all_ecdf_validations(variables_to_process, n_days=1000):
 
 def build_grand_correlation_matrices(var_dict_map, save_as_excel=False):
     """
-    Aligns 9 variables chronologically, creates a 216-column daily profile, 
-    and calculates the 216x216 Spearman correlation matrix for each season.
+    Aligns the variables chronologically and calculates a daily-profile
+    correlation matrix for each period in the input data.
     """
-    seasons = ['winter', 'spring', 'summer', 'autumn']
+    if not var_dict_map:
+        raise ValueError("At least one variable is required to build correlation matrices.")
+
+    periods = list(next(iter(var_dict_map.values())))
+    if not periods:
+        raise ValueError("At least one period is required to build correlation matrices.")
+    if any(set(data_by_period) != set(periods) for data_by_period in var_dict_map.values()):
+        raise ValueError("All variables must contain the same periods.")
+
     grand_matrices = {}
     
     folder_name = 'Results/Results_Stochastic_Analysis/Statistical data'
     os.makedirs(folder_name, exist_ok=True)
     
-    for season in seasons: ## First the seasons loop because we create a correlation matrix for each season for all variables
+    for period in periods:
         merged_daily_data = [] ## List to save dataframes [df_variable1, df_variable2, df_variable3, df_variable4...]
 
         for var_name, data_dict in var_dict_map.items():
-            df = pd.DataFrame(data_dict[season], columns=['datetime', 'value'])
+            df = pd.DataFrame(data_dict[period], columns=['datetime', 'value'])
             df['value'] = df['value'].astype(float)
             df['date'] = pd.to_datetime(df['datetime']).dt.date
             df['hour'] = pd.to_datetime(df['datetime']).dt.hour
@@ -569,7 +578,7 @@ def build_grand_correlation_matrices(var_dict_map, save_as_excel=False):
         # .fillna(0) handles night-time solar hours that have 0 variance
         grand_corr = grand_df.corr(method='spearman').fillna(0)
         
-        grand_matrices[season] = grand_corr
+        grand_matrices[period] = grand_corr
     
     print("\n All 216x216 Grand Correlation Matrices built successfully!")
 
@@ -578,43 +587,85 @@ def build_grand_correlation_matrices(var_dict_map, save_as_excel=False):
         file_path = f"{folder_name}/Correlation_Matrix.xlsx"
         
         with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
-            for season, matrix in grand_matrices.items():
-                matrix.to_excel(writer, sheet_name=season.capitalize())
+            for period, matrix in grand_matrices.items():
+                matrix.to_excel(writer, sheet_name=period.capitalize())
             
         print(f"\n All 216x216 Grand Correlation Matrices saved as {file_path}")
         
     return grand_matrices
 
 
+def get_month_day_counts(master_data_map):
+    """Return exact calendar-day counts for each month in a split data map."""
+    if not master_data_map:
+        raise ValueError("At least one variable is required to determine month lengths.")
+
+    month_names = (
+        'january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december'
+    )
+    reference_data = next(iter(master_data_map.values()))
+    if tuple(reference_data) != month_names:
+        raise ValueError("Monthly data must contain all twelve months in calendar order.")
+
+    january_timestamps = pd.to_datetime(reference_data['january'][:, 0])
+    january_years = january_timestamps.year.unique()
+    if len(january_years) != 1:
+        raise ValueError("January data must come from exactly one calendar year.")
+    simulation_year = int(january_years[0])
+
+    day_counts = {}
+    for month_number, month in enumerate(month_names, start=1):
+        for variable, data_by_month in master_data_map.items():
+            if tuple(data_by_month) != month_names:
+                raise ValueError(f"{variable} data must contain all twelve months in calendar order.")
+            month_data = data_by_month[month]
+            if len(month_data) == 0:
+                raise ValueError(f"{variable} has no data for {month.capitalize()}.")
+
+            timestamps = pd.to_datetime(month_data[:, 0])
+            years = timestamps.year.unique()
+            if len(years) != 1 or not np.all(timestamps.month == month_number):
+                raise ValueError(f"{variable} {month.capitalize()} data must come from one matching calendar month.")
+
+            if int(years[0]) != simulation_year:
+                raise ValueError("All monthly data must come from the same calendar year.")
+
+        day_counts[month] = calendar.monthrange(simulation_year, month_number)[1]
+
+    return day_counts
+
+
 
 def generate_3D_simulation_tensors(n_days, master_data_map, grand_corr_matrices_dict):
     """
-    Generates fully integrated artificial days across ALL variables simultaneously
-    using the 216x216 Grand Correlation Matrix. Returns a 3D tensor per season.
+    Generate integrated daily profiles per period using its correlation matrix.
+
+    ``n_days`` may be a period-to-day-count mapping for monthly simulations or
+    a single integer for existing non-monthly analysis workflows.
     """
-    seasons = ['winter', 'spring', 'summer', 'autumn']
+    periods = list(next(iter(master_data_map.values())))
     final_dict = {}
-    num_variables = len(master_data_map) # This is 5
-    
-    
-    for season in seasons:
-        print(f"\nGenerating {n_days} fully integrated artificial days for {season.capitalize()}...")
+    num_variables = len(master_data_map)
+
+    for period in periods:
+        period_n_days = n_days[period] if isinstance(n_days, dict) else n_days
+        print(f"\nGenerating {period_n_days} fully integrated artificial days for {period.capitalize()}...")
         
-        # Extract the correct 120x120 matrix for this season
-        grand_corr_matrix = grand_corr_matrices_dict[season].values
+        grand_corr_matrix = grand_corr_matrices_dict[period].values
         
         # Generate Z and U for THIS season
-        Z = np.random.multivariate_normal(mean=np.zeros(grand_corr_matrix.shape[0]), cov=grand_corr_matrix, size=n_days)
+        Z = np.random.multivariate_normal(mean=np.zeros(grand_corr_matrix.shape[0]), cov=grand_corr_matrix, size=period_n_days)
         U = norm.cdf(Z) # Shape: (n_days, 216)
         
         # 2. THE FIX: Initialize the 3D tensor correctly (Variables, Days, Hours)
-        simulated_tensor = np.zeros((num_variables, n_days, 24))
+        simulated_tensor = np.zeros((num_variables, period_n_days, 24))
         master_col_idx = 0 
         
         # 3. Loop through the 5 variables
         for var_idx, (var_name, data_dict) in enumerate(master_data_map.items()):
             
-            df = pd.DataFrame(data_dict[season], columns=['datetime', 'value'])
+            df = pd.DataFrame(data_dict[period], columns=['datetime', 'value'])
             df['value'] = df['value'].astype(float)
             df['date'] = pd.to_datetime(df['datetime']).dt.date
             df['hour'] = pd.to_datetime(df['datetime']).dt.hour
@@ -632,11 +683,10 @@ def generate_3D_simulation_tensors(n_days, master_data_map, grand_corr_matrices_
                 
                 master_col_idx += 1 
         
-        #Saving the completed tensor for this season outside the variable loop
-        final_dict[season] = simulated_tensor
-        print(f"Saved {season.capitalize()} tensor with shape: {simulated_tensor.shape} -> (Variables, Days, Hours)")
+        final_dict[period] = simulated_tensor
+        print(f"Saved {period.capitalize()} tensor with shape: {simulated_tensor.shape} -> (Variables, Days, Hours)")
 
-    print(f"\nSaved all seasons in a dictionary with keys: {seasons}")
+    print(f"\nSaved all periods in a dictionary with keys: {periods}")
     return final_dict
 
 

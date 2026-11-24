@@ -32,8 +32,20 @@ from CoreModules.Stochastic_simulator import (
     build_grand_correlation_matrices,
     generate_3D_simulation_tensors,
     create_prosumer_time_matrix_stochastic,
+    get_month_day_counts,
 )
 from CoreModules.Digital_Twin_engine import twin, compute_prosumer_kpis
+
+
+def _get_period_day_counts(master_data_map, fallback_n_days):
+    month_names = (
+        'january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december'
+    )
+    periods = next(iter(master_data_map.values()))
+    if tuple(periods) == month_names:
+        return get_month_day_counts(master_data_map)
+    return {period: fallback_n_days for period in periods}
 
 
 ##########################################################
@@ -161,7 +173,11 @@ def montecarlo(number_iterations, n_days, prosumer_based_data, df_EC_parameters,
     all_sum_analysis = []
 
     num_prosumers = prosumer_based_data.shape[1]
-    time_periods = n_days * 24   # 720 hours per iteration
+    n_days_by_period = _get_period_day_counts(master_data_map, n_days)
+    period = season.lower()
+    if period not in n_days_by_period:
+        raise ValueError(f"Unknown simulation period: {season}")
+    time_periods = n_days_by_period[period] * 24
     
     ## Creating the coorelation matrices
     grand_corr_matrices_dict =  build_grand_correlation_matrices(master_data_map);
@@ -170,19 +186,18 @@ def montecarlo(number_iterations, n_days, prosumer_based_data, df_EC_parameters,
         np.random.seed(seed)
         
     for rep in range(number_iterations):
-        final_simulation_data = generate_3D_simulation_tensors(n_days, master_data_map, grand_corr_matrices_dict);
+        final_simulation_data = generate_3D_simulation_tensors(n_days_by_period, master_data_map, grand_corr_matrices_dict)
         
-        # 2. Extract the 30-day stochastic month
-        solar_m = final_simulation_data[season][0].flatten()
-        wind_m  = final_simulation_data[season][1].flatten()
-        BP_m    = final_simulation_data[season][2].flatten()
-        SP_m    = final_simulation_data[season][3].flatten()
+        solar_m = final_simulation_data[period][0].flatten()
+        wind_m  = final_simulation_data[period][1].flatten()
+        BP_m    = final_simulation_data[period][2].flatten()
+        SP_m    = final_simulation_data[period][3].flatten()
             
-        C1_m = final_simulation_data[season][4].flatten()
-        C2_m = final_simulation_data[season][5].flatten()
-        C3_m = final_simulation_data[season][6].flatten()
-        C4_m = final_simulation_data[season][7].flatten()
-        C5_m = final_simulation_data[season][8].flatten()
+        C1_m = final_simulation_data[period][4].flatten()
+        C2_m = final_simulation_data[period][5].flatten()
+        C3_m = final_simulation_data[period][6].flatten()
+        C4_m = final_simulation_data[period][7].flatten()
+        C5_m = final_simulation_data[period][8].flatten()
 
         # Stack the 5 arrays into a single 2D matrix of shape (5_prosumers, hours)
         load_matrix = np.vstack([C1_m, C2_m, C3_m, C4_m, C5_m])
@@ -224,7 +239,7 @@ def export_doe_results_to_excel(doe_matrix, community_stats_list, prosumer_stats
     # We format the DoE Matrix Inputs to have a "Experiment Settings" top header
     df_doe_reset = doe_matrix.reset_index()
     df_doe_inputs = df_doe_reset.copy()
-    # This creates the 2-level header: Top level is 'Experiment Settings', Bottom is 'Season', 'Batteries', etc.
+    # This creates the 2-level header: Top level is 'Experiment Settings', Bottom is 'Month', 'Battery', etc.
     df_doe_inputs.columns = pd.MultiIndex.from_product([['Experiment Settings'], df_doe_inputs.columns])
 
     # Formating the community sheet
@@ -280,8 +295,8 @@ def fullfactorial(doe_matrix, number_iterations, n_days, prosumer_based_data, df
     ## Creating the coorelation matrices & needed variables
     grand_corr_matrices_dict =  build_grand_correlation_matrices(master_data_map);
     num_prosumers = prosumer_based_data.shape[1]
-    seasons = ['winter', 'spring', 'summer', 'autumn']
-    time_periods = n_days * 24   
+    periods = list(master_data_map['Solar'])
+    n_days_by_period = _get_period_day_counts(master_data_map, n_days)
 
     ## Saving variables
     time_based_data_list = []
@@ -307,20 +322,20 @@ def fullfactorial(doe_matrix, number_iterations, n_days, prosumer_based_data, df
         E_wt_pr_dictionary = {}
 
         # 1. Generate a fresh stochastic dataset for this iteration
-        final_simulation_data = generate_3D_simulation_tensors(n_days, master_data_map, grand_corr_matrices_dict);
+        final_simulation_data = generate_3D_simulation_tensors(n_days_by_period, master_data_map, grand_corr_matrices_dict)
         
-        for season in seasons:
-            # 2. Extract the 30-day stochastic month
-            solar_m = final_simulation_data[season][0].flatten()
-            wind_m  = final_simulation_data[season][1].flatten()
-            BP_m    = final_simulation_data[season][2].flatten()
-            SP_m    = final_simulation_data[season][3].flatten()
+        for period in periods:
+            time_periods = n_days_by_period[period] * 24
+            solar_m = final_simulation_data[period][0].flatten()
+            wind_m  = final_simulation_data[period][1].flatten()
+            BP_m    = final_simulation_data[period][2].flatten()
+            SP_m    = final_simulation_data[period][3].flatten()
             
-            C1_m = final_simulation_data[season][4].flatten()
-            C2_m = final_simulation_data[season][5].flatten()
-            C3_m = final_simulation_data[season][6].flatten()
-            C4_m = final_simulation_data[season][7].flatten()
-            C5_m = final_simulation_data[season][8].flatten()
+            C1_m = final_simulation_data[period][4].flatten()
+            C2_m = final_simulation_data[period][5].flatten()
+            C3_m = final_simulation_data[period][6].flatten()
+            C4_m = final_simulation_data[period][7].flatten()
+            C5_m = final_simulation_data[period][8].flatten()
 
             # Stack the 5 arrays into a single 2D matrix of shape (5_prosumers, hours)
             load_matrix = np.vstack([C1_m, C2_m, C3_m, C4_m, C5_m])
@@ -332,9 +347,9 @@ def fullfactorial(doe_matrix, number_iterations, n_days, prosumer_based_data, df
             E_pv_pr = solar_m * df_EC_parameters.loc['pw_pv_pr', 'Value']
             E_wt_pr = wind_m * df_EC_parameters.loc['pw_wt_pr', 'Value']
 
-            time_based_data_dictionary[season] = time_based_data
-            E_pv_pr_dictionary[season] = E_pv_pr
-            E_wt_pr_dictionary[season] = E_wt_pr
+            time_based_data_dictionary[period] = time_based_data
+            E_pv_pr_dictionary[period] = E_pv_pr
+            E_wt_pr_dictionary[period] = E_wt_pr
 
         # We save the dictionaries into lists for each iteration.
         time_based_data_list.append(time_based_data_dictionary)
@@ -348,7 +363,8 @@ def fullfactorial(doe_matrix, number_iterations, n_days, prosumer_based_data, df
         current_row = doe_matrix.loc[experiment_number]
 
         # Current conditions
-        season = current_row['Season'].lower()
+        period_column = 'Month' if 'Month' in current_row.index else 'Season'
+        period = current_row[period_column].lower()
         raw_p2p = current_row['P2P method']
         P2P_method = p2p_mapping[raw_p2p]
         tariff = current_row['BP tariff']
@@ -356,7 +372,7 @@ def fullfactorial(doe_matrix, number_iterations, n_days, prosumer_based_data, df
         consumption = current_row['Consumption']
 
         print(f"\n--- Running Experiment {experiment_number}/576 ---")
-        print(f"Config: {season}, {P2P_method}, Tariff: {tariff}, Bat: {battery}, Cons: {consumption}")
+        print(f"Config: {period}, {P2P_method}, Tariff: {tariff}, Bat: {battery}, Cons: {consumption}")
 
         # TARIFF MULTIPLIER (Symmetrical ±25%)
         if tariff == 'Low':
@@ -396,9 +412,9 @@ def fullfactorial(doe_matrix, number_iterations, n_days, prosumer_based_data, df
             # Starting iteration loop
             for rep in range(number_iterations):
                 # Get the right data
-                time_based_data = time_based_data_list[rep][season]
-                E_pv_pr = E_pv_pr_list[rep][season]
-                E_wt_pr = E_wt_pr_list[rep][season]
+                time_based_data = time_based_data_list[rep][period]
+                E_pv_pr = E_pv_pr_list[rep][period]
+                E_wt_pr = E_wt_pr_list[rep][period]
                 current_time_based_data = time_based_data.copy()
     
                 # FIXED: Multiply by cons_mult, not the string word!
@@ -421,7 +437,7 @@ def fullfactorial(doe_matrix, number_iterations, n_days, prosumer_based_data, df
             
 
             stats_comm, stats_prosumer, prosumer_labels, kpi_names = analyse_montecarlo_no_plots(
-                all_prosumer, all_community, all_sum_analysis, number_iterations, n_days, season, P2P_method)
+                all_prosumer, all_community, all_sum_analysis, number_iterations, n_days_by_period[period], period, P2P_method)
         
         
             community_stadistics_per_experiment.append(stats_comm)
@@ -433,7 +449,7 @@ def fullfactorial(doe_matrix, number_iterations, n_days, prosumer_based_data, df
             os.makedirs(checkpoint_folder, exist_ok=True) # Creates the folder safely
         
             # Create a clean, identifiable file name
-            file_name = f"Exp_{experiment_number}_{season}_{P2P_method}.xlsx"
+            file_name = f"Exp_{experiment_number}_{period}_{P2P_method}.xlsx"
             file_path = os.path.join(checkpoint_folder, file_name)
         
             # Save the two dataframes into one Excel file
@@ -553,9 +569,10 @@ def build_kpi_table_with_ci(doe_matrix, p2p_method, source_name, target_kpis, is
     mapped_p2p = p2p_mapping[p2p_method]
     
     all_data = []
+    period_column = 'Month' if 'Month' in doe_matrix.columns else 'Season'
     for exp_num, row in baseline_exps.iterrows():
-        season = row['Season'].lower()
-        file_name = f"Exp_{exp_num}_{season}_{mapped_p2p}.xlsx"
+        period = str(row[period_column]).lower()
+        file_name = f"Exp_{exp_num}_{period}_{mapped_p2p}.xlsx"
         file_path = os.path.join(checkpoint_folder, file_name)
         
         if not os.path.exists(file_path):
@@ -566,7 +583,7 @@ def build_kpi_table_with_ci(doe_matrix, p2p_method, source_name, target_kpis, is
         if is_community:
             df_stats = pd.read_excel(file_path, sheet_name=sheet, index_col=0)
             
-            row_data = {'Source': source_name, 'Season': season.capitalize()}
+            row_data = {'Source': source_name, period_column: period.capitalize()}
             for kpi in target_kpis:
                 try:
                     mean_val = df_stats.loc[kpi, 'mean']
@@ -582,7 +599,7 @@ def build_kpi_table_with_ci(doe_matrix, p2p_method, source_name, target_kpis, is
             
             prosumers = [f"P{i}" for i in range(1, 6)]
             for p in prosumers:
-                p_row = {'Source': source_name, 'Season': season.capitalize(), 'Prosumer': p}
+                p_row = {'Source': source_name, period_column: period.capitalize(), 'Prosumer': p}
                 for kpi in target_kpis:
                     try:
                         mean_val = df_stats.loc[(p, kpi), 'mean']
@@ -598,16 +615,16 @@ def build_kpi_table_with_ci(doe_matrix, p2p_method, source_name, target_kpis, is
     if not df_final.empty:
         if is_community:
             return (df_final
-                .set_index(['Source', 'Season'])
+                .set_index(['Source', period_column])
                 .stack()
-                .unstack('Season')
+                .unstack(period_column)
                 .rename_axis(index=['Source', 'KPI'])
                )
         else:
             return (df_final
-                .set_index(['Source', 'Season', 'Prosumer'])
+                .set_index(['Source', period_column, 'Prosumer'])
                 .stack()
-                .unstack('Season')
+                .unstack(period_column)
                 .rename_axis(index=['Source', 'Prosumer', 'KPI'])
                 .reorder_levels(['Source', 'KPI', 'Prosumer'])
                 .sort_index()
@@ -654,6 +671,9 @@ def plot_main_effect(df, factor_col, kpi_col, kpi_unit, prosumer=None, save_imag
 
     if factor_col == 'Batteries':
         order=['Baseline', 'Low', 'Medium', 'High']  
+    elif factor_col == 'Month':
+        order=['January', 'February', 'March', 'April', 'May', 'June',
+               'July', 'August', 'September', 'October', 'November', 'December']
     elif factor_col == 'Season':
         order=['winter', 'spring', 'summer', 'autumn']
     elif factor_col == 'P2P method':
@@ -790,6 +810,10 @@ def plot_difference_ci(df, factor_col, kpi_col, kpi_unit, prosumers=None, save_i
   # --- DEFINING CATEGORY ORDER & BASELINE ---
     if factor_col == 'Batteries':
         order=['Baseline', 'Low', 'Medium', 'High']  
+    elif factor_col == 'Month':
+        order=['January', 'February', 'March', 'April', 'May', 'June',
+               'July', 'August', 'September', 'October', 'November', 'December']
+        reference_level = 'January'
     elif factor_col == 'Season':
         order=['Winter', 'Spring', 'Summer', 'Autumn']
         reference_level = 'Spring'
@@ -979,7 +1003,8 @@ def generate_all_main_effects_plots(df_comm, df_pros, plot_to_vizualize, factors
     print(f"Starting plotting: {plot_to_vizualize}...")
 
     if factors_list is None:
-        factors_list = ['Season', 'P2P method', 'BP tariff', 'Batteries', 'Consumption']
+        period_factor = 'Month' if ('Experiment Settings', 'Month') in df_comm.columns else 'Season'
+        factors_list = [period_factor, 'P2P method', 'BP tariff', 'Batteries', 'Consumption']
     if plots_root is None:
         plots_root = "Results/Results_DOE/Original_Experiment/Plots"
     if reference_levels is None:
@@ -1146,7 +1171,7 @@ def pareto_plots_grid(df, kpi_x, kpi_y, maximize_x, maximize_y, save_dir=None, f
 
     if factor_cols is None:
         # Fallback: detect whichever known factor columns actually exist in df
-        candidate_factors = ["Season", "P2P Method", "P2P method", "BP tariff", "Batteries",
+        candidate_factors = ["Month", "Season", "P2P Method", "P2P method", "BP tariff", "Batteries",
                               "Consumption", "Tariff", "Battery", "PV Installed", "WT Installed"]
         factor_cols = [c for c in candidate_factors if c in df.columns]
         # Keep it to at most 5, since the plot grid only has 5 slots (2x3 minus the info cell)
@@ -1282,7 +1307,8 @@ def sobol_like_anova(df, kpi_name, factor_cols=None):
     df2 = df.copy()
 
     if factor_cols is None:
-        factor_cols = ["Season", "P2P_method", "BP_tariff", "Batteries", "Consumption"]
+        period_factor = "Month" if "Month" in df2.columns else "Season"
+        factor_cols = [period_factor, "P2P_method", "BP_tariff", "Batteries", "Consumption"]
 
     # Estimate how many parameters the model needs (1 per level minus 1, per factor, plus intercept)
     n_params = 1
@@ -1415,13 +1441,13 @@ def export_doe_results_to_excel_app(doe_matrix, community_stats_list, prosumer_s
 
 
 
-def fullfactorial_app(doe_matrix, level_master_dict, number_iterations, n_days, prosumer_based_data, df_EC_parameters, master_data_map, seed, experiment_timestamp=None):
+def fullfactorial_app(doe_matrix, level_master_dict, number_iterations, prosumer_based_data, df_EC_parameters, master_data_map, seed, experiment_timestamp=None):
     print(f'Starting Full factorial experiment...')
 
     grand_corr_matrices_dict =  build_grand_correlation_matrices(master_data_map)
     num_prosumers = prosumer_based_data.shape[1]
-    seasons = ['winter', 'spring', 'summer', 'autumn']
-    time_periods = n_days * 24
+    months = list(master_data_map['Solar'])
+    n_days_by_month = get_month_day_counts(master_data_map)
     if experiment_timestamp is None:
         experiment_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
 
@@ -1448,27 +1474,28 @@ def fullfactorial_app(doe_matrix, level_master_dict, number_iterations, n_days, 
         solar_m_dictionary = {}
         wind_m_dictionary = {}
 
-        final_simulation_data = generate_3D_simulation_tensors(n_days, master_data_map, grand_corr_matrices_dict)
+        final_simulation_data = generate_3D_simulation_tensors(n_days_by_month, master_data_map, grand_corr_matrices_dict)
         
-        for season in seasons:
-            solar_m = final_simulation_data[season][0].flatten()
-            wind_m  = final_simulation_data[season][1].flatten()
-            BP_m    = final_simulation_data[season][2].flatten()
-            SP_m    = final_simulation_data[season][3].flatten()
+        for month in months:
+            time_periods = n_days_by_month[month] * 24
+            solar_m = final_simulation_data[month][0].flatten()
+            wind_m  = final_simulation_data[month][1].flatten()
+            BP_m    = final_simulation_data[month][2].flatten()
+            SP_m    = final_simulation_data[month][3].flatten()
             
-            C1_m = final_simulation_data[season][4].flatten()
-            C2_m = final_simulation_data[season][5].flatten()
-            C3_m = final_simulation_data[season][6].flatten()
-            C4_m = final_simulation_data[season][7].flatten()
-            C5_m = final_simulation_data[season][8].flatten()
+            C1_m = final_simulation_data[month][4].flatten()
+            C2_m = final_simulation_data[month][5].flatten()
+            C3_m = final_simulation_data[month][6].flatten()
+            C4_m = final_simulation_data[month][7].flatten()
+            C5_m = final_simulation_data[month][8].flatten()
 
             load_matrix = np.vstack([C1_m, C2_m, C3_m, C4_m, C5_m])
             
             time_based_data, _ = create_prosumer_time_matrix_stochastic(num_prosumers, time_periods,prosumer_based_data,
                                                                         load_matrix, solar_m, wind_m, BP_m, SP_m)
-            time_based_data_dictionary[season] = time_based_data
-            solar_m_dictionary[season] = solar_m
-            wind_m_dictionary[season] = wind_m
+            time_based_data_dictionary[month] = time_based_data
+            solar_m_dictionary[month] = solar_m
+            wind_m_dictionary[month] = wind_m
 
         time_based_data_list.append(time_based_data_dictionary)
         solar_m_list.append(solar_m_dictionary)
@@ -1480,7 +1507,7 @@ def fullfactorial_app(doe_matrix, level_master_dict, number_iterations, n_days, 
         start_time = time.time()
         current_row = doe_matrix.loc[experiment_number]
 
-        season = current_row['Season'].lower()
+        month = current_row['Month'].lower()
         raw_p2p = current_row['P2P Method']
         P2P_method = p2p_mapping[raw_p2p]
         
@@ -1492,7 +1519,7 @@ def fullfactorial_app(doe_matrix, level_master_dict, number_iterations, n_days, 
         wt_level = current_row['WT Installed']
 
         print(f"\n--- Running Experiment {experiment_number}/{len(doe_matrix)} ---")
-        print(f"Config: {season}, {P2P_method}")
+        print(f"Config: {month}, {P2P_method}")
 
         # ---------------------------------------------------------
         # Dynamic Dictionary Lookups
@@ -1536,9 +1563,9 @@ def fullfactorial_app(doe_matrix, level_master_dict, number_iterations, n_days, 
         
             for rep in range(number_iterations):
                 
-                time_based_data = time_based_data_list[rep][season]
-                raw_solar = solar_m_list[rep][season]
-                raw_wind = wind_m_list[rep][season]
+                time_based_data = time_based_data_list[rep][month]
+                raw_solar = solar_m_list[rep][month]
+                raw_wind = wind_m_list[rep][month]
                 current_time_based_data = time_based_data.copy()
     
                 current_time_based_data[:,2,:] = current_time_based_data[:,2,:] * tariff_mult
@@ -1560,7 +1587,7 @@ def fullfactorial_app(doe_matrix, level_master_dict, number_iterations, n_days, 
                 all_sum_analysis.append(sum_analysis_data)
             
             stats_comm, stats_prosumer, prosumer_labels, kpi_names = analyse_montecarlo_no_plots(
-                all_prosumer, all_community, all_sum_analysis, number_iterations, n_days, season, P2P_method)
+                all_prosumer, all_community, all_sum_analysis, number_iterations, n_days_by_month[month], month, P2P_method)
         
             community_stadistics_per_experiment.append(stats_comm)
             prosumer_stadistics_per_experiment.append(stats_prosumer)
@@ -1568,7 +1595,7 @@ def fullfactorial_app(doe_matrix, level_master_dict, number_iterations, n_days, 
             checkpoint_folder = f"Results/Results_DOE/{experiment_timestamp}_Experiment/DOE_Individual_Experiments"
             os.makedirs(checkpoint_folder, exist_ok=True) 
         
-            file_name = f"Exp_{experiment_number}_{season}_{P2P_method}.xlsx"
+            file_name = f"Exp_{experiment_number}_{month}_{P2P_method}.xlsx"
             file_path = os.path.join(checkpoint_folder, file_name)
         
             with pd.ExcelWriter(file_path) as writer:
@@ -1659,7 +1686,7 @@ def run_postprocessing_app(doe_matrix, experiment_timestamp, baseline_p2p=None, 
     df_comm, df_pros = load_doe_results_from_excel(file_path=master_path)
 
     # ---- 1. Baseline KPI export using build_kpi_table_with_ci (same nicely
-    #         formatted "Source / KPI / Season (mean ± CI)" layout as the
+    #         formatted "Source / KPI / Month (mean ± CI)" layout as the
     #         CLI script and the "Compare Scenarios" tab) ----
     p2p_col = 'P2P Method' if 'P2P Method' in doe_matrix.columns else 'P2P method'
     p2p_values = doe_matrix[p2p_col].unique().tolist()
@@ -1715,7 +1742,7 @@ def run_postprocessing_app(doe_matrix, experiment_timestamp, baseline_p2p=None, 
         f: baseline_levels.get(f, _detect_baseline_level(doe_matrix[f])) for f in active_numeric_factors
     }
 
-    candidate_factors = ['Season', 'P2P Method'] + numeric_factors
+    candidate_factors = ['Month', 'P2P Method'] + numeric_factors
     factors_present = [f for f in candidate_factors if f in doe_matrix.columns and doe_matrix[f].nunique() > 1]
 
     print("Generating CI (Difference) plots...")

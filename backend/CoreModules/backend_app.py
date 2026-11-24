@@ -50,11 +50,11 @@ def get_dynamic_baseline_matrix(df, selected_p2p):
     baseline_rows = df[mask].copy()
 
     # Preserve whichever index/ID column is present, so exp_num downstream
-    # matches the checkpoint file names (Exp_<id>_<season>_<p2p>.xlsx)
+    # matches the checkpoint file names (Exp_<id>_<month>_<p2p>.xlsx)
     index_col_candidates = ['Run Order', 'Experiment_ID']
     index_col = next((c for c in index_col_candidates if c in baseline_rows.columns), None)
 
-    factor_cols = [c for c in ['Season', p2p_col, 'BP tariff', 'Batteries', 'Consumption',
+    factor_cols = [c for c in ['Month', p2p_col, 'BP tariff', 'Batteries', 'Consumption',
                                 'Tariff', 'Battery', 'PV Installed', 'WT Installed']
                    if c in baseline_rows.columns]
 
@@ -68,7 +68,7 @@ def get_dynamic_baseline_matrix(df, selected_p2p):
 def generate_dynamic_doe(active_factors_dict):
     """
     Generates a Full Factorial DoE matrix dynamically based on selected factors.
-    Input: Dictionary like {'Season': ['Winter', 'Summer'], 'Tariff': ['Low', 'High']}
+    Input: Dictionary like {'Month': ['January', 'July'], 'Tariff': ['Low', 'High']}
     Output: Pandas DataFrame with all combinations.
     """
     keys = active_factors_dict.keys()

@@ -8,8 +8,6 @@ import KpiChartExplorer from "../components/KpiChartExplorer";
 import { api } from "../api/api";
 import { PROSUMER_COLUMNS, PROSUMER_SECTIONS, getKpiMeta } from "../utils/prosumerKpiMeta";
 
-const SEASON_ORDER = ["winter", "spring", "summer", "autumn"];
-
 export default function ProsumerResultsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -32,9 +30,11 @@ export default function ProsumerResultsPage() {
       try {
         let selectedSimulation = simulationId;
         if (!selectedSimulation) {
-          const simulationsData = await api.getSimulations();
-          selectedSimulation = simulationsData.simulations?.find(name => name !== "Original_Experiment");
-          if (!selectedSimulation) throw new Error("No simulations available");
+          setResolvedSimulationId("");
+          setExperiments([]);
+          setAlternative("");
+          setError("No hi ha cap simulació seleccionada.");
+          return;
         }
         const data = await api.getExperiments(selectedSimulation);
         if (!active) return;
@@ -79,8 +79,6 @@ export default function ProsumerResultsPage() {
   }, [alternative, resolvedSimulationId]);
 
   const periods = (prosumerData?.periods ?? [])
-    .slice()
-    .sort((a, b) => SEASON_ORDER.indexOf(a.id) - SEASON_ORDER.indexOf(b.id))
     .map(item => ({ id: item.id, label: item.label }));
   const selectedPeriodData = prosumerData?.periods?.find(item => item.id === period);
   const prosumers = selectedPeriodData?.prosumers ?? {};

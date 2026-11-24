@@ -6,9 +6,15 @@ import ResultsTabs from "../components/ResultsTabs";
 import { api } from "../api/api";
 import { communityKpiSections, defaultSelectedIndicators } from "../data/communityKpiConfig";
 
-const SEASON_ORDER = ["winter", "spring", "summer", "autumn"];
 const SCENARIO_MARKERS = ["●", "■", "◆", "▲", "★", "⬟", "✦", "✚", "⬢", "✿", "◉", "✧", "⬣", "✪", "❖", "✳", "⬤", "◈", "✺", "✥"];
 const SCENARIO_COLORS = ["#3e7b48", "#b89b62", "#8b744b", "#3d5e80", "#8a7799", "#b65d4a", "#39858a", "#7c8541"];
+
+function getAvailablePeriods(experiments) {
+  return [...new Map(
+    experiments.flatMap(experiment => experiment.available_periods ?? [])
+      .map(period => [period.id, period])
+  ).values()];
+}
 
 function alternativeLetter(index) {
   let value = index + 1;
@@ -203,9 +209,10 @@ export default function CompareResultsPage() {
       try {
         let selectedSimulation = simulationId;
         if (!selectedSimulation) {
-          const simulationsData = await api.getSimulations();
-          selectedSimulation = simulationsData.simulations?.find(name => name !== "Original_Experiment");
-          if (!selectedSimulation) throw new Error("No simulations available");
+          setResolvedSimulationId("");
+          setExperiments([]);
+          setScenarios([]);
+          throw new Error("No hi ha cap simulació seleccionada.");
         }
 
         const data = await api.getExperiments(selectedSimulation);
@@ -221,11 +228,8 @@ export default function CompareResultsPage() {
             experimentName: experiment.name
           }))
         );
-        const seasonIds = [...new Set(
-          availableExperiments.flatMap(experiment => experiment.available_seasons ?? [])
-            .map(season => String(season).toLowerCase())
-        )].sort((a, b) => SEASON_ORDER.indexOf(a) - SEASON_ORDER.indexOf(b));
-        setPeriod(current => seasonIds.includes(current) ? current : (seasonIds[0] ?? ""));
+        const periodIds = getAvailablePeriods(availableExperiments).map(item => item.id);
+        setPeriod(current => periodIds.includes(current) ? current : (periodIds[0] ?? ""));
       } catch (error) {
         console.error("Error loading experiments:", error);
       }
@@ -320,9 +324,7 @@ export default function CompareResultsPage() {
         onPeriodChange={setPeriod}
         alternative={alternative}
         onAlternativeChange={setAlternative}
-        periods={[...new Set(experiments.flatMap(experiment => experiment.available_seasons ?? []).map(season => String(season).toLowerCase()))]
-          .sort((a, b) => SEASON_ORDER.indexOf(a) - SEASON_ORDER.indexOf(b))
-          .map(id => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1) }))}
+        periods={getAvailablePeriods(experiments)}
       />
 
       <ResultsTabs />

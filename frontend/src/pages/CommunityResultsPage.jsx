@@ -32,7 +32,7 @@ function Legend({ items }) {
 
 export default function CommunityResultsPage() {
   const [searchParams] = useSearchParams();
-  const simulationId = searchParams.get("simulation") || "Original_Experiment";
+  const simulationId = searchParams.get("simulation") || "";
   const [period, setPeriod] = useState("winter");
   const [alternative, setAlternative] = useState("");
   const [experiments, setExperiments] = useState([]);
@@ -52,6 +52,14 @@ export default function CommunityResultsPage() {
     let cancelled = false;
 
     const fetchExperiments = async () => {
+      if (!simulationId) {
+        setExperiments([]);
+        setAlternative("");
+        setLoadingExperiments(false);
+        setLoading(false);
+        setError("No hi ha cap simulació seleccionada.");
+        return;
+      }
       try {
         const data = await api.getExperiments(simulationId);
         if (cancelled) return;

@@ -471,8 +471,7 @@ def plot_sankey_models(sum_market, sum_upc):
 def check_plot(data_dictionary, seasonal_upc, seasonal_time_based, attribute_name, save_image=False):
     """
     Creates a 5x1 vertical stacked subplot for a chosen attribute per prosumer
-    as a line graph, comparing Stochastic (DT) seasonal data against Deterministic (UPC) seasonal data.
-    Scales 1-month DT totals by 3 to match the 3-month seasonal baseline.
+    as a line graph, comparing stochastic and deterministic data by period.
     """
 
     attribute_data = {
@@ -486,7 +485,13 @@ def check_plot(data_dictionary, seasonal_upc, seasonal_time_based, attribute_nam
     attr_idx_DT = attribute_data[attribute_name]['index_DT']
     attr_idx_UPC = attribute_data[attribute_name]['index_UPC']
     
-    seasons = ['Winter', 'Spring', 'Summer', 'Autumn']
+    month_order = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+    legacy_season_order = ['Winter', 'Spring', 'Summer', 'Autumn']
+    is_monthly = all(month.lower() in data_dictionary for month in month_order)
+    periods = month_order if is_monthly else legacy_season_order
     num_prosumers = 5
 
     # Smart Aggregation Logic
@@ -506,16 +511,15 @@ def check_plot(data_dictionary, seasonal_upc, seasonal_time_based, attribute_nam
         season_values_upc = []
         
         # Extract both Stochastic and UPC data season by season
-        for season_raw in seasons:
-            season = season_raw.lower() 
+        for period_raw in periods:
+            period = period_raw.lower()
             
             # --- 1. Extract Stochastic Data ---
-            if season in data_dictionary:
-                value_stoch = data_dictionary[season][p, attr_idx_DT, :]                
+            if period in data_dictionary:
+                value_stoch = data_dictionary[period][p, attr_idx_DT, :]
                 agg_val_stoch = agg_method(value_stoch)
                 
-                # Multiply by 3 for energy/consumption totals to scale 1 month to a 3-month season
-                if not is_price:
+                if not is_price and not is_monthly:
                     agg_val_stoch *= 3
                     
                 season_values_stochastic.append(agg_val_stoch)
@@ -523,12 +527,12 @@ def check_plot(data_dictionary, seasonal_upc, seasonal_time_based, attribute_nam
                 season_values_stochastic.append(0)
                 
             # --- 2. Extract Deterministic (UPC) Data ---
-            if season in seasonal_time_based and season in seasonal_upc:
+            if period in seasonal_time_based and period in seasonal_upc:
                 # Prices come from time_based matrix, Generation/Consumption from upc matrix
                 if is_price:
-                    value_det = seasonal_time_based[season][p, attr_idx_UPC, :]
+                    value_det = seasonal_time_based[period][p, attr_idx_UPC, :]
                 else:
-                    value_det = seasonal_upc[season][p, attr_idx_UPC, :]
+                    value_det = seasonal_upc[period][p, attr_idx_UPC, :]
                     
                 agg_val_det = agg_method(value_det)
                 
@@ -545,8 +549,8 @@ def check_plot(data_dictionary, seasonal_upc, seasonal_time_based, attribute_nam
         season_values_upc = np.round(season_values_upc, decimals=5)
 
         # Plotting (Both are now lines!)
-        axes[p].plot(seasons, season_values_stochastic, marker='o', color='#1f77b4', linewidth=1.5, markersize=10, label='Stochastic (DT)')
-        axes[p].plot(seasons, season_values_upc, marker='x', color='#d62728', linestyle='--', linewidth=1.5, markersize=8, label='Deterministic (UPC)')
+        axes[p].plot(periods, season_values_stochastic, marker='o', color='#1f77b4', linewidth=1.5, markersize=10, label='Stochastic (DT)')
+        axes[p].plot(periods, season_values_upc, marker='x', color='#d62728', linestyle='--', linewidth=1.5, markersize=8, label='Deterministic (UPC)')
 
         axes[p].margins(y=0.2)
 
@@ -562,13 +566,14 @@ def check_plot(data_dictionary, seasonal_upc, seasonal_time_based, attribute_nam
         axes[p].tick_params(axis='y', which='major', length=6, color='grey')
         
         if p == num_prosumers - 1:
-            axes[p].tick_params(axis='x', labelrotation=0) 
+            axes[p].tick_params(axis='x', labelrotation=45 if is_monthly else 0)
         
         if p == 0:
             # Legend anchored to the middle of the first plot
             axes[p].legend(loc='lower center', bbox_to_anchor=(0.5, 1.25), ncol=2, framealpha=1, facecolor='white', edgecolor='lightgrey', fontsize=9)
             
-            axes[p].text(0.5, 1.85, f"{agg_title} {attribute_name} per Season", 
+            period_label = "Month" if is_monthly else "Season"
+            axes[p].text(0.5, 1.85, f"{agg_title} {attribute_name} per {period_label}",
                          transform=axes[p].transAxes, ha='center', va='bottom', fontsize=16, fontweight='bold')
             
             axes[p].text(0.5, 1.65, "Verification of Stochastic Data vs Baseline", 

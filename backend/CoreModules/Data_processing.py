@@ -556,9 +556,8 @@ def process_esios_price_data(file_path, price_name="Market Price"):
     # Data cleaning: Convert to numeric and change units (€/MWh to €/kWh)
     df_price['value'] = pd.to_numeric(df_price['value'], errors='coerce') / 1000.0
     
-    # Handling datetime and strip timezones to match PV/Wind data
-    df_price['datetime'] = pd.to_datetime(df_price['datetime'], utc=True)
-    df_price['datetime'] = df_price['datetime'].dt.tz_localize(None)
+    # Keep ESIOS local wall time so calendar months align with PV/Wind data.
+    df_price['datetime'] = pd.to_datetime(df_price['datetime'].str.slice(stop=19))
     
     # NaN Check and Safety Handling
     nan_count = df_price['value'].isna().sum()
@@ -569,6 +568,9 @@ def process_esios_price_data(file_path, price_name="Market Price"):
         df_price['value'] = df_price['value'].ffill() 
     else:
         print("No NaN Values.")
+
+    # DST fall-back repeats a local hour; collapse it for the daily hour pivot.
+    df_price = df_price.groupby('datetime', as_index=False, sort=False)['value'].mean()
         
     # Extract the final NumPy array
     price_array = df_price[['datetime', 'value']].values
@@ -704,6 +706,21 @@ def split_into_seasons(data_array):
     }
     
     return seasons_dict
+
+
+def split_into_months(data_array):
+    """Split datetime/value rows into calendar months, preserving their order."""
+    month_names = (
+        'january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december'
+    )
+    dates = pd.to_datetime(data_array[:, 0])
+    months = dates.month.to_numpy()
+
+    return {
+        month_name: data_array[months == month_number]
+        for month_number, month_name in enumerate(month_names, start=1)
+    }
 
 
 

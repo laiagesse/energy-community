@@ -512,7 +512,10 @@ with tab2:
 
     # A. Valores Base por Defecto (Para los factores NO seleccionados)
     baseline_defaults = {
-        "Season": ["Winter", "Spring", "Summer", "Autumn"], 
+        "Month": [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December",
+        ],
         "P2P Method": ["Market"],
         "Battery": [0.0],
         "Tariff": [1.0],       
@@ -522,7 +525,7 @@ with tab2:
     }
 
 # B. Selección de Factores Activos
-    available_factors = ["Season", "P2P Method", "Battery", "Tariff", "Consumption", "PV Installed", "WT Installed"]
+    available_factors = ["Month", "P2P Method", "Battery", "Tariff", "Consumption", "PV Installed", "WT Installed"]
     selected_factors = st.multiselect(
         "Choose factors to include in the Full Factorial matrix:", 
         options=available_factors, 
@@ -532,7 +535,10 @@ with tab2:
     # Inicializamos la matriz DoE con los "Baselines"
     # 0 = Baseline para los factores numéricos
     final_doe_dict = {
-        "Season": ["Winter", "Spring", "Summer", "Autumn"], 
+        "Month": [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December",
+        ],
         "P2P Method": ["Market"],
         "Battery": [0],
         "Tariff": [0],       
@@ -551,10 +557,17 @@ with tab2:
         for factor in selected_factors:
             with st.container(border=True):
                 
-                if factor == "Season":
-                    chosen_seasons = st.multiselect("Select Seasons:", ["Winter", "Spring", "Summer", "Autumn"], default=["Winter", "Spring", "Summer", "Autumn"], key="cfg_season")
-                    if not chosen_seasons: valid_configuration = False; st.error("⚠️ Select at least one Season.")
-                    else: final_doe_dict[factor] = chosen_seasons
+                if factor == "Month":
+                    chosen_months = st.multiselect(
+                        "Select Months:",
+                        ["January", "February", "March", "April", "May", "June",
+                         "July", "August", "September", "October", "November", "December"],
+                        default=["January", "February", "March", "April", "May", "June",
+                                 "July", "August", "September", "October", "November", "December"],
+                        key="cfg_month",
+                    )
+                    if not chosen_months: valid_configuration = False; st.error("⚠️ Select at least one month.")
+                    else: final_doe_dict[factor] = chosen_months
                     
                 elif factor == "P2P Method":
                     chosen_p2p = st.multiselect("Select P2P Methods:", ["Market", "One price", "Social", "Environmental"], default=["Market", "One price", "Social", "Environmental"], key="cfg_p2p")
@@ -683,12 +696,10 @@ with tab2:
     st.markdown("### 4. Monte Carlo Settings")
     st.write("Configure the stochastic engine parameters.")
     
-    col_mc1, col_mc2, col_mc3 = st.columns(3)
+    col_mc1, col_mc2 = st.columns(2)
     with col_mc1:
         num_iterations = st.number_input("Number of Iterations:", min_value=1, value=200, step=10, help="Number of Monte Carlo simulations per experiment.")
     with col_mc2:
-        n_days = st.number_input("Days per Season:", min_value=1, max_value=365, value=31, step=1, help="Number of days evaluated in each season.")
-    with col_mc3:
         sim_seed = st.number_input("Random Seed:", value=10, step=1, help="Fixes the random generation to make the experiment repeatable.")
 
     # 5. LAUNCH BUTTON (Versión Asíncrona Segura)
@@ -747,13 +758,13 @@ with tab2:
             safe_num_pros = C.shape[0]
 
             master_data_map = {
-                'Solar': split_into_seasons(USR_PV),
-                'Wind': split_into_seasons(USR_WT),
-                'BP': split_into_seasons(BP_array),
-                'SP': split_into_seasons(SP_array)
+                'Solar': split_into_months(USR_PV),
+                'Wind': split_into_months(USR_WT),
+                'BP': split_into_months(BP_array),
+                'SP': split_into_months(SP_array)
             }
             for i in range(safe_num_pros):
-                master_data_map[f'C{i+1}'] = split_into_seasons(C[i, :, :])
+                master_data_map[f'C{i+1}'] = split_into_months(C[i, :, :])
 
             from datetime import datetime
             experiment_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -774,7 +785,6 @@ with tab2:
                         doe_matrix=final_doe_matrix,
                         level_master_dict=level_master_dict,
                         number_iterations=num_iterations,
-                        n_days=n_days,
                         prosumer_based_data=members_data, 
                         df_EC_parameters=df_EC_parameters, 
                         master_data_map=master_data_map, 

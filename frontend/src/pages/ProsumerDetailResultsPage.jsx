@@ -7,8 +7,6 @@ import { formatKpiValue } from "../utils/formatKpi";
 import { api } from "../api/api";
 import { PROSUMER_COLUMNS, PROSUMER_SECTIONS } from "../utils/prosumerKpiMeta";
 
-const SEASON_ORDER = ["winter", "spring", "summer", "autumn"];
-
 export default function ProsumerDetailResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const simulationFromUrl = searchParams.get("simulation");
@@ -35,9 +33,12 @@ export default function ProsumerDetailResultsPage() {
       try {
         let selectedSimulation = simulationFromUrl;
         if (!selectedSimulation) {
-          const simulations = await api.getSimulations();
-          selectedSimulation = simulations.simulations?.find(name => name !== "Original_Experiment");
-          if (!selectedSimulation) throw new Error("No simulations available");
+          setSimulationId("");
+          setExperiments([]);
+          setAlternative("");
+          setError("No hi ha cap simulació seleccionada.");
+          setLoading(false);
+          return;
         }
         const result = await api.getExperiments(selectedSimulation);
         if (!active) return;
@@ -76,8 +77,6 @@ export default function ProsumerDetailResultsPage() {
   }, [simulationId, alternative]);
 
   const periods = useMemo(() => (data?.periods ?? [])
-    .slice()
-    .sort((a, b) => SEASON_ORDER.indexOf(a.id) - SEASON_ORDER.indexOf(b.id))
     .map(item => ({ id: item.id, label: item.label })), [data]);
   const selectedPeriod = data?.periods?.find(item => item.id === period);
   const prosumers = selectedPeriod?.prosumers ?? {};
