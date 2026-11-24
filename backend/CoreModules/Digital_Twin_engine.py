@@ -1171,7 +1171,7 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
         H = results_data.shape[2]
     
     num_prosumers = prosumer_based_data.shape[1]
-    anual_scaling_factor = 8760 / H ## Needed for profits and paybackñ. This gives us a multiplying factor that we use to find the anual value.
+    period_year_fraction = H / 8760
 
     E_total = sum_analysis_data[:,0] 
     own_consump = sum_analysis_data[:,1] 
@@ -1198,9 +1198,6 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
     hypothetical_consumption_cost = sum_analysis_data[:,19] 
     generation_PV = sum_analysis_data[:,20] 
     generation_WT = sum_analysis_data[:,21] 
-    anual_PV_generation = generation_PV * anual_scaling_factor
-    anual_WT_generation = generation_WT * anual_scaling_factor
-    anual_BATT_discharge = batt_discharge * anual_scaling_factor
     total_load = own_consump + battery_disch_own_consump + P2P_received + G2P
     energy_surplus = P2G + P2P_given + battery_disch_P2P
     energy_deficit = G2P + battery_charge_grid + P2P_received
@@ -1232,12 +1229,18 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
     envi_upfront_WT =  ((( alpha * pw_wt_pr ) + pw_wt ) * CO2_eq_upfront_WT).round(4)
     envi_upfront_BATT = ((( alpha * ic_pr ) + ic_B ) * CO2_eq_upfront_batt).round(4)
     total_upfront = envi_upfront_PV + envi_upfront_WT + envi_upfront_BATT
-    anual_hardware_emissions = (envi_upfront_PV/UL_PV) + (envi_upfront_WT/UL_WT) + (envi_upfront_BATT/UL_B)
-    
-    annual_previous_emissions = (total_load * CO2_eq_emission_grid)*anual_scaling_factor
-    annual_current_grid_emissions = ((G2P + battery_charge_grid) *CO2_eq_emission_grid)*anual_scaling_factor
-    total_anual_emissions = anual_hardware_emissions + annual_current_grid_emissions
-    annual_carbon_savings = (anual_PV_generation + anual_WT_generation + anual_BATT_discharge - (battery_charge_grid * anual_scaling_factor)) * CO2_eq_emission_grid
+    period_hardware_emissions = (
+        (envi_upfront_PV / UL_PV)
+        + (envi_upfront_WT / UL_WT)
+        + (envi_upfront_BATT / UL_B)
+    ) * period_year_fraction
+
+    period_previous_emissions = total_load * CO2_eq_emission_grid
+    period_current_grid_emissions = (G2P + battery_charge_grid) * CO2_eq_emission_grid
+    period_total_emissions = period_hardware_emissions + period_current_grid_emissions
+    period_carbon_savings = (
+        generation_PV + generation_WT + batt_discharge - battery_charge_grid
+    ) * CO2_eq_emission_grid
 
     kpis = pd.DataFrame(index=[f"P{i+1}" for i in range(num_prosumers)])
 
@@ -1252,15 +1255,21 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
     
     economic_kpis = pd.DataFrame(index=[f"P{i+1}" for i in range(num_prosumers)])
 
-    economic_kpis['Total final bill in € per month']= net_final_bill
-    economic_kpis['Saved by entering community € per month']= saved_money
-    economic_kpis['Anual profit in %'] = np.divide((total_profit_investment * anual_scaling_factor * 100), total_invested, out=np.zeros_like(total_invested, dtype=float), where=(total_invested != 0)).round(4)
-    economic_kpis['Anual profit PV in %'] = np.divide((PV_profit * anual_scaling_factor * 100), invested_pv, out=np.zeros_like(invested_pv, dtype=float), where=(invested_pv != 0)).round(4)
-    economic_kpis['Anual profit WT in %'] = np.divide((WT_profit * anual_scaling_factor * 100), invested_wt, out=np.zeros_like(invested_wt, dtype=float), where=(invested_wt != 0)).round(4)  
-    economic_kpis['Anual profit bateries in %'] = np.divide((bat_profit * anual_scaling_factor * 100), invested_bat, out=np.zeros_like(invested_bat, dtype=float), where=(invested_bat != 0)).round(4)
-    economic_kpis['Payback time PV'] = np.divide(invested_pv, (PV_profit * anual_scaling_factor), out=np.zeros_like(invested_pv, dtype=float), where=((invested_pv > 1) & (np.abs(PV_profit * anual_scaling_factor) > 1e-5)))
-    economic_kpis['Payback time WT'] =  np.divide(invested_wt, (WT_profit * anual_scaling_factor), out=np.zeros_like(invested_wt, dtype=float), where=((invested_wt > 1) & (np.abs(WT_profit * anual_scaling_factor) > 1e-5)))
-    economic_kpis['Payback time BATT'] = np.divide(invested_bat, (bat_profit * anual_scaling_factor), out=np.zeros_like(invested_bat, dtype=float), where=((invested_bat > 1) & (np.abs(bat_profit * anual_scaling_factor) > 1e-5)))
+    economic_kpis['Total final bill in €']= net_final_bill
+    economic_kpis['Saved by entering community €']= saved_money
+    economic_kpis['Profit in %'] = np.divide((total_profit_investment), total_invested, out=np.zeros_like(total_invested, dtype=float), where=(total_invested != 0)).round(4)
+    economic_kpis['Profit PV in %'] = np.divide(PV_profit, invested_pv, out=np.zeros_like(invested_pv, dtype=float), where=(invested_pv != 0)).round(4)
+    economic_kpis['Profit WT in %'] = np.divide(WT_profit, invested_wt, out=np.zeros_like(invested_wt, dtype=float), where=(invested_wt != 0)).round(4)
+    economic_kpis['Profit batteries in %'] = np.divide(bat_profit, invested_bat, out=np.zeros_like(invested_bat, dtype=float), where=(invested_bat != 0)).round(4)
+    economic_kpis['Payback time'] = np.divide(
+        total_invested,
+        total_profit_investment,
+        out=np.zeros_like(total_invested, dtype=float),
+        where=((total_invested > 1) & (np.abs(total_profit_investment) > 1e-5))
+    ).round(4)
+    economic_kpis['Payback time PV'] = np.divide(invested_pv, PV_profit, out=np.zeros_like(invested_pv, dtype=float), where=((invested_pv > 1) & (np.abs(PV_profit) > 1e-5)))
+    economic_kpis['Payback time WT'] = np.divide(invested_wt, WT_profit, out=np.zeros_like(invested_wt, dtype=float), where=((invested_wt > 1) & (np.abs(WT_profit) > 1e-5)))
+    economic_kpis['Payback time BATT'] = np.divide(invested_bat, bat_profit, out=np.zeros_like(invested_bat, dtype=float), where=((invested_bat > 1) & (np.abs(bat_profit) > 1e-5)))
 
     social_kpis = pd.DataFrame(index=[f"P{i+1}" for i in range(num_prosumers)])
 
@@ -1271,13 +1280,13 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
 
     enviromental_kpis = pd.DataFrame(index=[f"P{i+1}" for i in range(num_prosumers)])
 
-    enviromental_kpis['Avoided anual emissions (Kg CO2 eq)']= annual_previous_emissions-anual_hardware_emissions-annual_current_grid_emissions
-    enviromental_kpis['Enviromental impact'] = np.divide(total_anual_emissions, annual_previous_emissions,  out=np.zeros_like(total_anual_emissions, dtype=float), where=(annual_previous_emissions != 0)).round(4)
+    enviromental_kpis['Avoided emissions (Kg CO2 eq)'] = period_previous_emissions - period_hardware_emissions - period_current_grid_emissions
+    enviromental_kpis['Enviromental impact'] = np.divide(period_total_emissions, period_previous_emissions, out=np.zeros_like(period_total_emissions, dtype=float), where=(period_previous_emissions != 0)).round(4)
     enviromental_kpis['Upfront carbon debt (Kg CO2 eq)']= total_upfront
-    enviromental_kpis['TOTAL carbon payback time in years'] = np.divide(total_upfront, annual_carbon_savings,  out=np.zeros_like(total_upfront, dtype=float), where=(annual_carbon_savings != 0)).round(4)
-    enviromental_kpis['PV carbon payback time in years'] = np.divide(envi_upfront_PV, (anual_PV_generation*CO2_eq_emission_grid),  out=np.zeros_like(envi_upfront_PV, dtype=float), where=((anual_PV_generation*CO2_eq_emission_grid) != 0)).round(4)
-    enviromental_kpis['WT carbon payback time in years'] = np.divide(envi_upfront_WT, (anual_WT_generation*CO2_eq_emission_grid),  out=np.zeros_like(envi_upfront_WT, dtype=float), where=((anual_WT_generation*CO2_eq_emission_grid) != 0)).round(4)
-    enviromental_kpis['BATT carbon payback time in years'] = np.divide(envi_upfront_BATT, (anual_BATT_discharge*CO2_eq_emission_grid -(battery_charge_grid * anual_scaling_factor*CO2_eq_emission_grid)),  out=np.zeros_like(envi_upfront_BATT, dtype=float), where=((anual_BATT_discharge*CO2_eq_emission_grid) != 0)).round(4)
+    enviromental_kpis['TOTAL carbon payback time'] = np.divide(total_upfront, period_carbon_savings, out=np.zeros_like(total_upfront, dtype=float), where=(period_carbon_savings != 0)).round(4)
+    enviromental_kpis['PV carbon payback time'] = np.divide(envi_upfront_PV, (generation_PV * CO2_eq_emission_grid), out=np.zeros_like(envi_upfront_PV, dtype=float), where=((generation_PV * CO2_eq_emission_grid) != 0)).round(4)
+    enviromental_kpis['WT carbon payback time'] = np.divide(envi_upfront_WT, (generation_WT * CO2_eq_emission_grid), out=np.zeros_like(envi_upfront_WT, dtype=float), where=((generation_WT * CO2_eq_emission_grid) != 0)).round(4)
+    enviromental_kpis['BATT carbon payback time'] = np.divide(envi_upfront_BATT, ((batt_discharge - battery_charge_grid) * CO2_eq_emission_grid), out=np.zeros_like(envi_upfront_BATT, dtype=float), where=(((batt_discharge - battery_charge_grid) * CO2_eq_emission_grid) != 0)).round(4)
     
     community = {}
 
@@ -1289,9 +1298,9 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
     community["Community total saved in €"] = saved_money.sum()
     community["Fairness index"] = (1 / num_prosumers) * (((x_m.sum())**2) / (x_m**2).sum()) if (x_m**2).sum() != 0 else 0 #From Bara & Oprea (2023)
     community['Baseline poverty help'] = saved_money.sum() / hypothetical_consumption_cost.mean() if hypothetical_consumption_cost.mean() != 0 else 0
-    community['Avoided anual emissions (Kg CO2 eq)']= annual_previous_emissions.sum()-anual_hardware_emissions.sum()-annual_current_grid_emissions.sum()
-    community['Enviromental impact'] = total_anual_emissions.sum() / annual_previous_emissions.sum() if annual_previous_emissions.sum() != 0 else 0
-    community['TOTAL carbon payback time in years'] = total_upfront.sum() / annual_carbon_savings.sum() if annual_carbon_savings.sum() != 0 else 0
+    community['Avoided emissions (Kg CO2 eq)'] = period_previous_emissions.sum() - period_hardware_emissions.sum() - period_current_grid_emissions.sum()
+    community['Enviromental impact'] = period_total_emissions.sum() / period_previous_emissions.sum() if period_previous_emissions.sum() != 0 else 0
+    community['TOTAL carbon payback time'] = total_upfront.sum() / period_carbon_savings.sum() if period_carbon_savings.sum() != 0 else 0
 
     return kpis, community, economic_kpis, social_kpis, enviromental_kpis, sum_analysis_data
 

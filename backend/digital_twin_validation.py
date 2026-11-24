@@ -328,37 +328,37 @@ kpis_market_autumn, community_market_autumn, economic_kpis_market_autumn, social
 
 
 ###Preparing the Dataframes
-prosumer_kpis_market_winter = pd.concat([economic_kpis_market_winter[['Anual profit in %']], social_kpis_market_winter[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
+prosumer_kpis_market_winter = pd.concat([economic_kpis_market_winter[['Profit in %']], social_kpis_market_winter[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
 global_kpis_market_winter = pd.DataFrame([community_market_winter])[[
     'Community total saved in €', 
-    'Avoided anual emissions (Kg CO2 eq)', 
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency', 
     'Community Grid Dependency', 
     'Fairness index'
 ]].copy()
 
-prosumer_kpis_market_spring = pd.concat([economic_kpis_market_spring[['Anual profit in %']], social_kpis_market_spring[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
+prosumer_kpis_market_spring = pd.concat([economic_kpis_market_spring[['Profit in %']], social_kpis_market_spring[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
 global_kpis_market_spring = pd.DataFrame([community_market_spring])[[
     'Community total saved in €', 
-    'Avoided anual emissions (Kg CO2 eq)', 
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency', 
     'Community Grid Dependency', 
     'Fairness index'
 ]].copy()
 
-prosumer_kpis_market_summer = pd.concat([economic_kpis_market_summer[['Anual profit in %']], social_kpis_market_summer[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
+prosumer_kpis_market_summer = pd.concat([economic_kpis_market_summer[['Profit in %']], social_kpis_market_summer[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
 global_kpis_market_summer = pd.DataFrame([community_market_summer])[[
     'Community total saved in €', 
-    'Avoided anual emissions (Kg CO2 eq)', 
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency', 
     'Community Grid Dependency', 
     'Fairness index'
 ]].copy()
 
-prosumer_kpis_market_autumn = pd.concat([economic_kpis_market_autumn[['Anual profit in %']], social_kpis_market_autumn[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
+prosumer_kpis_market_autumn = pd.concat([economic_kpis_market_autumn[['Profit in %']], social_kpis_market_autumn[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
 global_kpis_market_autumn = pd.DataFrame([community_market_autumn])[[
     'Community total saved in €', 
-    'Avoided anual emissions (Kg CO2 eq)', 
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency', 
     'Community Grid Dependency', 
     'Fairness index'
@@ -377,37 +377,37 @@ kpis_UPC_autumn, community_UPC_autumn, economic_kpis_UPC_autumn, social_kpis_UPC
 
 
 ###Preparing the Dataframes
-prosumer_kpis_UPC_winter = pd.concat([economic_kpis_UPC_winter[['Anual profit in %']], social_kpis_UPC_winter[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
+prosumer_kpis_UPC_winter = pd.concat([economic_kpis_UPC_winter[['Profit in %']], social_kpis_UPC_winter[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
 global_kpis_UPC_winter = pd.DataFrame([community_UPC_winter])[[
     'Community total saved in €', 
-    'Avoided anual emissions (Kg CO2 eq)', 
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency', 
     'Community Grid Dependency', 
     'Fairness index'
 ]].copy()
 
-prosumer_kpis_UPC_spring = pd.concat([economic_kpis_UPC_spring[['Anual profit in %']], social_kpis_market_spring[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
+prosumer_kpis_UPC_spring = pd.concat([economic_kpis_UPC_spring[['Profit in %']], social_kpis_market_spring[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
 global_kpis_UPC_spring = pd.DataFrame([community_UPC_spring])[[
     'Community total saved in €', 
-    'Avoided anual emissions (Kg CO2 eq)', 
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency', 
     'Community Grid Dependency', 
     'Fairness index'
 ]].copy()
 
-prosumer_kpis_UPC_summer = pd.concat([economic_kpis_UPC_summer[['Anual profit in %']], social_kpis_UPC_summer[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
+prosumer_kpis_UPC_summer = pd.concat([economic_kpis_UPC_summer[['Profit in %']], social_kpis_UPC_summer[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
 global_kpis_UPC_summer = pd.DataFrame([community_UPC_summer])[[
     'Community total saved in €', 
-    'Avoided anual emissions (Kg CO2 eq)', 
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency', 
     'Community Grid Dependency', 
     'Fairness index'
 ]].copy()
 
-prosumer_kpis_UPC_autumn = pd.concat([economic_kpis_UPC_autumn[['Anual profit in %']], social_kpis_UPC_autumn[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
+prosumer_kpis_UPC_autumn = pd.concat([economic_kpis_UPC_autumn[['Profit in %']], social_kpis_UPC_autumn[['EC savings appropiation', 'Bill reduction in %', 'Contribution into EC investment']]], axis=1)
 global_kpis_UPC_autumn = pd.DataFrame([community_UPC_autumn])[[
     'Community total saved in €', 
-    'Avoided anual emissions (Kg CO2 eq)', 
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency', 
     'Community Grid Dependency', 
     'Fairness index'

@@ -73,7 +73,7 @@ export const communityKpiSections = [
     indicators: [
       {
         id: "avoidedEmissions",
-        label: "Annual avoided emissions (kg CO₂ eq)",
+        label: "Avoided emissions during the month (kg CO₂ eq)",
         direction: "higher",
         format: "emissions"
       },
@@ -85,9 +85,9 @@ export const communityKpiSections = [
       },
       {
         id: "carbonPaybackTime",
-        label: "Carbon payback time (years)",
+        label: "Carbon payback time (months)",
         direction: "lower",
-        format: "years"
+        format: "months"
       }
     ]
   },

@@ -95,8 +95,8 @@ def analyse_montecarlo_no_plots(all_prosumer, all_community, all_sum_analysis,
         "Community total final bill in €",
         "Community total saved in €",
         "Fairness index", 'Baseline poverty help', 
-        'Avoided anual emissions (Kg CO2 eq)', 'Enviromental impact', 
-        'TOTAL carbon payback time in years']
+        'Avoided emissions (Kg CO2 eq)', 'Enviromental impact',
+        'TOTAL carbon payback time']
     
     df_comm = df_comm[ordered_cols]
 
@@ -527,10 +527,11 @@ def load_doe_results_from_excel(file_path= "Results/Results_DOE/Original_Experim
 def build_kpi_table_with_ci(doe_matrix, p2p_method, source_name, target_kpis, is_community=True, ci_col_name='CI', checkpoint_folder="Results/Results_DOE/Original_Experiment/DOE_Individual_Experiments", baseline_levels=None):
     
     decimal_config = {
-    2: ['Community total saved in €', 'Avoided anual emissions (Kg CO2 eq)', 
-        'Saved by entering community € per month', 'Anual profit in %'],
+    2: ['Community total saved in €', 'Avoided emissions (Kg CO2 eq)',
+        'Saved by entering community €'],
     4: ['Community Self-Sufficiency', 'Community Grid Dependency', 
-        'Fairness index', 'EC savings appropiation']
+        'Fairness index', 'EC savings appropiation', 'Profit in %',
+        'Profit PV in %', 'Profit WT in %', 'Profit batteries in %']
     }
     
     kpi_decimals = {kpi: dec for dec, kpis in decimal_config.items() for kpi in kpis}
@@ -749,41 +750,41 @@ def plot_difference_ci(df, factor_col, kpi_col, kpi_unit, prosumers=None, save_i
         "Community Self-Sufficiency", "Self-sufficiency difference between prosumers",
         "Community Grid Dependency", "Community Self-Consumption",
         "Community total final bill in €", "Community total saved in €",
-        "Fairness index", 'Baseline poverty help', 'Avoided anual emissions (Kg CO2 eq)', 
-        'Enviromental impact', 'TOTAL carbon payback time in years'
+        "Fairness index", 'Baseline poverty help', 'Avoided emissions (Kg CO2 eq)',
+        'Enviromental impact', 'TOTAL carbon payback time'
     ]
     community_kpis_name = [
         "Community Self-Sufficiency", "Self-sufficiency difference between prosumers",
         "Community Grid Dependency", "Community Self-Consumption",
         "Community total final bill", "Community total saved",
-        "Fairness index", 'Baseline poverty help', 'Avoided anual emissions', 
-        'Enviromental impact', 'TOTAL carbon payback time'
+        "Fairness index", 'Baseline poverty help', 'Avoided emissions',
+        'Enviromental impact', 'Carbon payback time (months)'
     ]
     
     prosumer_kpis = [
         'Self-Consumption Ratio', 'Self-Sufficiency Ratio', 'Grid Dependency', 
         'Net P2P Balance in KWh per simulated period', 'P2P Participation in KWh per simulated period', 
         'Shared energy in KWH (G2P-P2G) per simulated period', 'P2P trading index in deficit', 
-        'P2P trading index in surplus', 'Total final bill in € per month', 
-        'Saved by entering community € per month', 'Anual profit in %', 
-        'Anual profit PV in %', 'Anual profit WT in %', 'Anual profit bateries in %', 
-        'Payback time PV', 'Payback time WT', 'Payback time BATT', 'Bill reduction in %', 
+        'P2P trading index in surplus', 'Total final bill in €',
+        'Saved by entering community €', 'Profit in %',
+        'Profit PV in %', 'Profit WT in %', 'Profit batteries in %',
+        'Payback time', 'Payback time PV', 'Payback time WT', 'Payback time BATT', 'Bill reduction in %',
         'EC gain appropiation', 'EC savings appropiation', 'Contribution into EC investment', 
-        'Avoided anual emissions (Kg CO2 eq)', 'Enviromental impact', 'Upfront carbon debt (Kg CO2 eq)', 
-        'TOTAL carbon payback time in years', 'PV carbon payback time in years', 
-        'WT carbon payback time in years', 'BATT carbon payback time in years'
+        'Avoided emissions (Kg CO2 eq)', 'Enviromental impact', 'Upfront carbon debt (Kg CO2 eq)',
+        'TOTAL carbon payback time', 'PV carbon payback time',
+        'WT carbon payback time', 'BATT carbon payback time'
     ]
     prosumer_kpis_name = [
         'Self-Consumption Ratio', 'Self-Sufficiency Ratio', 'Grid Dependency', 
         'Net P2P Balance in KWh', 'P2P Participation in KWh', 
         'Shared energy (G2P-P2G)', 'P2P trading index in deficit', 
         'P2P trading index in surplus', 'Total final bill', 
-        'Saved by entering community', 'Anual profit', 
-        'Anual profit PV', 'Anual profit WT', 'Anual profit bateries', 
-        'Payback time PV', 'Payback time WT', 'Payback time BATT', 'Bill reduction', 
+        'Saved by entering community', 'Profit this period',
+        'Profit PV this period', 'Profit WT this period', 'Profit batteries this period',
+        'Payback time', 'Payback time PV', 'Payback time WT', 'Payback time BATT', 'Bill reduction',
         'EC gain appropiation', 'EC savings appropiation', 'Contribution into EC investment', 
-        'Avoided anual emissions', 'Enviromental impact', 'Upfront carbon debt', 
-        'TOTAL carbon payback time', 'PV carbon payback times', 
+        'Avoided emissions', 'Enviromental impact', 'Upfront carbon debt',
+        'Carbon payback time', 'PV carbon payback time',
         'WT carbon payback time', 'BATT carbon payback time'
     ]
 
@@ -983,9 +984,9 @@ def get_kpi_unit(kpi_name):
     elif 'co2' in kpi_lower or 'emissions' in kpi_lower or 'debt' in kpi_lower or 'impact' in kpi_lower:
         return 'Kg CO2 eq'
         
-    # Time metrics (years)
-    elif 'years' in kpi_lower or 'payback' in kpi_lower:
-        return 'years'
+    # Payback metrics are expressed in simulated months.
+    elif 'months' in kpi_lower or 'payback' in kpi_lower:
+        return 'months'
         
     else:
         return ''
@@ -1021,9 +1022,9 @@ def generate_all_main_effects_plots(df_comm, df_pros, plot_to_vizualize, factors
         "Community total saved in €",
         "Fairness index",
         'Baseline poverty help',
-        'Avoided anual emissions (Kg CO2 eq)',
+        'Avoided emissions (Kg CO2 eq)',
         'Enviromental impact',
-        'TOTAL carbon payback time in years'
+        'TOTAL carbon payback time'
     ]
 
     prosumer_kpis = [
@@ -1035,12 +1036,13 @@ def generate_all_main_effects_plots(df_comm, df_pros, plot_to_vizualize, factors
         'Shared energy in KWH (G2P-P2G) per simulated period',
         'P2P trading index in deficit',
         'P2P trading index in surplus',
-        'Total final bill in € per month',
-        'Saved by entering community € per month',
-        'Anual profit in %',
-        'Anual profit PV in %',
-        'Anual profit WT in %',
-        'Anual profit bateries in %',
+        'Total final bill in €',
+        'Saved by entering community €',
+        'Profit in %',
+        'Profit PV in %',
+        'Profit WT in %',
+        'Profit batteries in %',
+        'Payback time',
         'Payback time PV',
         'Payback time WT',
         'Payback time BATT',
@@ -1048,13 +1050,13 @@ def generate_all_main_effects_plots(df_comm, df_pros, plot_to_vizualize, factors
         'EC gain appropiation',
         'EC savings appropiation',
         'Contribution into EC investment',
-        'Avoided anual emissions (Kg CO2 eq)',
+        'Avoided emissions (Kg CO2 eq)',
         'Enviromental impact',
         'Upfront carbon debt (Kg CO2 eq)',
-        'TOTAL carbon payback time in years',
-        'PV carbon payback time in years',
-        'WT carbon payback time in years',
-        'BATT carbon payback time in years'
+        'TOTAL carbon payback time',
+        'PV carbon payback time',
+        'WT carbon payback time',
+        'BATT carbon payback time'
     ]
 
     for factor in factors_list:
@@ -1286,12 +1288,12 @@ def pareto_plots_grid(df, kpi_x, kpi_y, maximize_x, maximize_y, save_dir=None, f
 
 kpi_pairs = [
 
-    ("Community total final bill in €", "Avoided anual emissions (Kg CO2 eq)", False, True),
-    ("Community total saved in €", "Avoided anual emissions (Kg CO2 eq)", True, True),
-    ("Fairness index", "Avoided anual emissions (Kg CO2 eq)", True, True),
+    ("Community total final bill in €", "Avoided emissions (Kg CO2 eq)", False, True),
+    ("Community total saved in €", "Avoided emissions (Kg CO2 eq)", True, True),
+    ("Fairness index", "Avoided emissions (Kg CO2 eq)", True, True),
     ("Fairness index", "Community total saved in €", True, True),
-    ("Community Self-Sufficiency", "Avoided anual emissions (Kg CO2 eq)", True, True),
-    ("Community Self-Consumption", "Avoided anual emissions (Kg CO2 eq)", True, True),
+    ("Community Self-Sufficiency", "Avoided emissions (Kg CO2 eq)", True, True),
+    ("Community Self-Consumption", "Avoided emissions (Kg CO2 eq)", True, True),
     ("Community Self-Sufficiency", "Fairness index", True, True),
     ("Community total final bill in €", "Fairness index", False, True),
     ("Community Self-Consumption", "Community total final bill in €", True, False),
@@ -1368,7 +1370,7 @@ def run_all_sobol_plots(df, save_dir=None, factor_cols=None):
         "Self_suff_diff",
         "Baseline_poverty_help",
         "Environmental_impact",
-        "Carbon_payback_years"
+        "Carbon_payback_time"
     ]
 
     for kpi in kpis:
@@ -1696,15 +1698,16 @@ def run_postprocessing_app(doe_matrix, experiment_timestamp, baseline_p2p=None, 
 
     target_kpis = [
         'Community total saved in €',
-        'Avoided anual emissions (Kg CO2 eq)',
+        'Avoided emissions (Kg CO2 eq)',
         'Community Self-Sufficiency',
         'Community Grid Dependency',
         'Fairness index'
     ]
     target_prosumer_kpis = [
-        'Anual profit in %',
+        'Profit in %',
+        'Payback time',
         'EC savings appropiation',
-        'Saved by entering community € per month'
+        'Saved by entering community €'
     ]
 
     df_comm_baseline = build_kpi_table_with_ci(
@@ -1769,7 +1772,7 @@ def run_postprocessing_app(doe_matrix, experiment_timestamp, baseline_p2p=None, 
         rename_map = {
             "Community total saved in €": "Community_total_saved",
             "Community total final bill in €": "Community_total_final_bill",
-            "Avoided anual emissions (Kg CO2 eq)": "Avoided_emissions",
+            "Avoided emissions (Kg CO2 eq)": "Avoided_emissions",
             "Self-sufficiency difference between prosumers": "Self_suff_diff",
             "Community Self-Sufficiency": "Community_Self_Sufficiency",
             "Community Grid Dependency": "Community_Grid_Dependency",
@@ -1777,7 +1780,7 @@ def run_postprocessing_app(doe_matrix, experiment_timestamp, baseline_p2p=None, 
             "Fairness index": "Fairness_index",
             "Baseline poverty help": "Baseline_poverty_help",
             "Enviromental impact": "Environmental_impact",
-            "TOTAL carbon payback time in years": "Carbon_payback_years",
+            "TOTAL carbon payback time": "Carbon_payback_time",
         }
         for f in factors_present:
             rename_map[f] = f.replace(" ", "_")

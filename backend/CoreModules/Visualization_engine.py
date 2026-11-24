@@ -63,25 +63,25 @@ def plot_prosumer_kpi_heatmap(df, title="Prosumer KPI Analysis",
     fixed_100_to_minus_100 = [
         "Net P2P Balance in KWh per simulated period", 
         "P2P Participation in KWh per simulated period", 
-        'Total final bill in € per month', 
-        'Saved by entering community € per month',
+        'Total final bill in €',
+        'Saved by entering community €',
         'Coverage original bill (before EC) in %',
         'Bill reduction in %',
-        'Avoided anual emissions (Kg CO2 eq)'
+        'Avoided emissions (Kg CO2 eq)'
     ]
 
     fixed_minus_100_to_100 = ["Shared energy in KWH (G2P-P2G) per simulated period"]
 
     # Match spelling:
     profits = [
-        "Anual profit in %", "Anual profit PV in %", 
-        "Anual profit WT in %", "Anual profit bateries in %"
+        "Profit in %", "Profit PV in %",
+        "Profit WT in %", "Profit batteries in %"
     ]
 
-    payback_PV = ['Payback time PV', 'PV carbon payback time in years']
-    payback_WT = ['Payback time WT', 'WT carbon payback time in years']
-    payback_batt = ['Payback time BATT', 'BATT carbon payback time in years']
-    payback_total = ['TOTAL carbon payback time in years']
+    payback_PV = ['Payback time PV', 'PV carbon payback time']
+    payback_WT = ['Payback time WT', 'WT carbon payback time']
+    payback_batt = ['Payback time BATT', 'BATT carbon payback time']
+    payback_total = ['TOTAL carbon payback time', 'Payback time']
     
     contribution = ['Contribution into EC investment']
     upfront = ['Upfront carbon debt (Kg CO2 eq)']
@@ -98,18 +98,18 @@ def plot_prosumer_kpi_heatmap(df, title="Prosumer KPI Analysis",
 
         # 1. Payback Logic (Red if > Lifetime, Green if <= Lifetime)
         if any(col in group for group in [payback_PV, payback_WT, payback_batt, payback_total]):
-            if col in payback_PV: lt = lifetime_pv
-            elif col in payback_WT: lt = lifetime_wt
-            elif col in payback_batt: lt = lifetime_bat
-            else: lt = lifetime_total
+            if col in payback_PV: lt = lifetime_pv * 12
+            elif col in payback_WT: lt = lifetime_wt * 12
+            elif col in payback_batt: lt = lifetime_bat * 12
+            else: lt = lifetime_total * 12
             
             # 1.0 = Green, 0.0 = Red. Use 0.9 and 0.1 to avoid pure white center
             norm_df[col] = np.where(df[col] <= lt, 0.9, 0.1)
             white_mask[col] = (df[col] < 1e-5)
 
-        # 2. Profits (0% to 10% scale)
+        # 2. Period return ratios (0% to 10% scale)
         elif col in profits:
-            norm_df[col] = df[col].clip(0, 10) / 10.0
+            norm_df[col] = df[col].clip(0, 0.1) / 0.1
             white_mask[col] = (df[col] < 1e-5)
 
         # 3. Upfront Debt (Always Yellow/Neutral)
@@ -205,7 +205,7 @@ def compare_community_p2p(list_of_dfs, method_names, save_folder=None):
         'community total final bill in €' 
     ]
     
-    yellow_fixed = ['Avoided anual emissions (Kg CO2 eq)']
+    yellow_fixed = ['Avoided emissions (Kg CO2 eq)']
     poverty_scale = ['Baseline poverty help']
     
     # Iterate through each ROW (KPI) to apply specific color scaling rules

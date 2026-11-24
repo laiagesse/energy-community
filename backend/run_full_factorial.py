@@ -228,15 +228,16 @@ print(df_pros)
 ## Choosing the desired KPIs
 target_kpis = [
     'Community total saved in €',
-    'Avoided anual emissions (Kg CO2 eq)',
+    'Avoided emissions (Kg CO2 eq)',
     'Community Self-Sufficiency',
     'Community Grid Dependency',
     'Fairness index'
 ]
 target_prosumer_kpis = [
-    'Anual profit in %', 
+    'Profit in %',
+    'Payback time',
     'EC savings appropiation',
-    'Saved by entering community € per month'
+    'Saved by entering community €'
 ]
 
 
@@ -294,9 +295,9 @@ community_kpis = [
         "Community total saved in €",
         "Fairness index", 
         'Baseline poverty help', 
-        'Avoided anual emissions (Kg CO2 eq)', 
+        'Avoided emissions (Kg CO2 eq)',
         'Enviromental impact', 
-        'TOTAL carbon payback time in years']
+        'TOTAL carbon payback time']
 
 prosumer_kpis = [
     
@@ -308,26 +309,27 @@ prosumer_kpis = [
         'Shared energy in KWH (G2P-P2G) per simulated period',        
         'P2P trading index in deficit',        
         'P2P trading index in surplus',      
-        'Total final bill in € per month',       
-        'Saved by entering community € per month',        
-        'Anual profit in %',         
-        'Anual profit PV in %',         
-        'Anual profit WT in %',         
-        'Anual profit bateries in %',         
-        'Payback time PV',         
-        'Payback time WT',        
-        'Payback time BATT',         
+        'Total final bill in €',
+        'Saved by entering community €',
+        'Profit in %',
+        'Profit PV in %',
+        'Profit WT in %',
+        'Profit batteries in %',
+        'Payback time',
+        'Payback time PV',
+        'Payback time WT',
+        'Payback time BATT',
         'Bill reduction in %',         
         'EC gain appropiation',         
         'EC savings appropiation',         
         'Contribution into EC investment',        
-        'Avoided anual emissions (Kg CO2 eq)',       
+        'Avoided emissions (Kg CO2 eq)',
         'Enviromental impact', 
         'Upfront carbon debt (Kg CO2 eq)', 
-        'TOTAL carbon payback time in years', 
-        'PV carbon payback time in years', 
-        'WT carbon payback time in years', 
-        'BATT carbon payback time in years'
+        'TOTAL carbon payback time',
+        'PV carbon payback time',
+        'WT carbon payback time',
+        'BATT carbon payback time'
 ]
 ''';
 
@@ -341,7 +343,7 @@ community_kpis_name = [
         "Community total saved",
         "Fairness index", 
         'Baseline poverty help', 
-        'Avoided anual emissions', 
+        'Avoided emissions',
         'Enviromental impact', 
         'TOTAL carbon payback time]
 
@@ -357,18 +359,18 @@ prosumer_kpis_name = [
         'P2P trading index in surplus',      
         'Total final bill',       
         'Saved by entering community',        
-        'Anual profit',         
-        'Anual profit PV,         
-        'Anual profit WT,         
-        'Anual profit bateries,         
-        'Payback time PV',         
-        'Payback time WT',        
-        'Payback time BATT',         
+        'Profit this period',
+        'Profit PV this period',
+        'Profit WT this period',
+        'Profit batteries this period',
+        'Payback time PV',
+        'Payback time WT',
+        'Payback time BATT',
         'Bill reduction',         
         'EC gain appropiation',         
         'EC savings appropiation',         
         'Contribution into EC investment',        
-        'Avoided anual emissions,       
+        'Avoided emissions,
         'Enviromental impact', 
         'Upfront carbon debt', 
         'TOTAL carbon payback time', 
@@ -381,8 +383,8 @@ prosumer_kpis_name = [
 plot_main_effect(df_comm, 'P2P method', 'Community total saved in €', '€')
 plot_main_effect(df_comm, 'Batteries', 'Community total saved in €', '€')
 plot_main_effect(df_comm, 'Batteries', 'Community total final bill in €', '€')
-plot_main_effect(df_pros, 'Batteries', 'Total final bill in € per month', '€', 'P1')
-plot_main_effect(df_pros, 'P2P method', 'Anual profit bateries in %', '%', 'P1', '%')
+plot_main_effect(df_pros, 'Batteries', 'Total final bill in €', '€', 'P1')
+plot_main_effect(df_pros, 'P2P method', 'Profit batteries in %', '%', 'P1', '%')
 
 
 # ### Function that saves all plots:
@@ -411,7 +413,7 @@ df_clean = df_comm.copy()
 df_clean = df_clean.rename(columns={
     "Community total saved in €": "Community_total_saved",
     "Community total final bill in €": "Community_total_final_bill",
-    "Avoided anual emissions (Kg CO2 eq)": "Avoided_emissions",
+    "Avoided emissions (Kg CO2 eq)": "Avoided_emissions",
     "P2P method": "P2P_method",
     "BP tariff": "BP_tariff",
     "Self-sufficiency difference between prosumers": "Self_suff_diff",
@@ -421,7 +423,7 @@ df_clean = df_clean.rename(columns={
     "Fairness index": "Fairness_index",
     "Baseline poverty help": "Baseline_poverty_help",
     "Enviromental impact": "Environmental_impact",
-    "TOTAL carbon payback time in years": "Carbon_payback_years"
+    "TOTAL carbon payback time": "Carbon_payback_time"
 })
 
 #run_all_sobol_plots(df_clean)

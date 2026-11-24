@@ -77,6 +77,12 @@ function formatKpiValue(value, format) {
         maximumFractionDigits: 2
       }).format(number)} years`;
 
+    case "months":
+      return `${new Intl.NumberFormat("en-GB", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(number)} months`;
+
     case "index":
       return new Intl.NumberFormat("en-GB", {
         minimumFractionDigits: 3,
