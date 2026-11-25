@@ -46,6 +46,13 @@ const UNITS = {
   batteryPayback: " months",
 };
 
+const FINANCIAL_PAYBACK_KPIS = new Set([
+  "payback",
+  "paybackPv",
+  "paybackWt",
+  "paybackBattery",
+]);
+
 export function formatKpiValue(value, key, period) {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value !== "number") return value;
@@ -66,6 +73,9 @@ export function formatKpiValue(value, key, period) {
   }).format(displayValue);
 
   if (PERCENTAGE_KPIS.has(key)) return `${formatted} %`;
+  if (period === "annual" && FINANCIAL_PAYBACK_KPIS.has(key)) {
+    return `${formatted} years`;
+  }
 
   if ((key === "finalBill" || key === "saved") && period === "annual") {
     return `${formatted} €`;

@@ -3277,32 +3277,11 @@ textarea {
   flex: 0 0 min(22rem, 40%);
 }
 
-.prosumer-detail-kpi-grid {
+.prosumer-extra-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: .8rem;
-}
-
-.prosumer-detail-kpi {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: .85rem;
-  min-height: 6.2rem;
-  padding: 1rem 1.1rem;
-  border: 1px solid var(--results-border, #e4ded3);
-  border-radius: .8rem;
-  background: var(--results-card, #fff);
-}
-
-.prosumer-detail-kpi span {
-  color: var(--results-muted, #756c5e);
-  font-size: .82rem;
-}
-
-.prosumer-detail-kpi strong {
-  color: var(--results-ink, #211c17);
-  font-size: 1.2rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
 @media (max-width: 700px) {
@@ -3470,6 +3449,131 @@ textarea {
 .kpi-diverging-zero { grid-column: 2; grid-row: 1; z-index: 1; height: 1rem; background: #756c5e; }
 .kpi-diverging-bar.negative { grid-column: 1; grid-row: 1; }
 .kpi-diverging-bar.positive { grid-column: 3; grid-row: 1; }
+
+.prosumer-results-page .kpi-diverging-chart {
+  --kpi-diverging-label-width: 4rem;
+  --kpi-diverging-label-gap: .4rem;
+  --kpi-diverging-value-width: 5.5rem;
+  --kpi-diverging-value-gap: .65rem;
+}
+
+.prosumer-results-page .kpi-diverging-chart .kpi-diverging-axis-row,
+.prosumer-results-page .kpi-diverging-chart .kpi-diverging-row {
+  grid-template-columns: var(--kpi-diverging-label-width) minmax(0, 1fr);
+  column-gap: var(--kpi-diverging-label-gap);
+}
+
+.prosumer-results-page .kpi-diverging-chart .kpi-diverging-plot {
+  grid-template-columns: minmax(0, 1fr) var(--kpi-diverging-value-width);
+  gap: var(--kpi-diverging-value-gap);
+}
+
+.kpi-diverging-axis-plot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--kpi-diverging-value-width, 5.5rem);
+  align-items: center;
+  gap: var(--kpi-diverging-value-gap, .65rem);
+}
+
+.kpi-diverging-axis-scale {
+  position: relative;
+  height: 1rem;
+  border-bottom: .0625rem solid var(--results-border, #e4ded3);
+  color: var(--results-muted, #756c5e);
+  font-size: .65rem;
+}
+
+.kpi-diverging-axis-scale > span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.kpi-diverging-axis-scale > span::after {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  height: .25rem;
+  border-left: .0625rem solid var(--results-border, #e4ded3);
+  content: "";
+}
+
+.kpi-diverging-axis-scale > span.is-start { transform: none; }
+.kpi-diverging-axis-scale > span.is-end { transform: translateX(-100%); }
+.kpi-diverging-axis-scale > span.is-start::after { left: 0; }
+.kpi-diverging-axis-scale > span.is-end::after { left: 100%; }
+.kpi-diverging-axis-unit {
+  color: var(--results-muted, #756c5e);
+  font-size: .65rem;
+  text-align: right;
+}
+
+.kpi-diverging-rows {
+  position: relative;
+  padding-top: .35rem;
+}
+
+.kpi-diverging-grid {
+  position: absolute;
+  inset: .35rem 0 0;
+  pointer-events: none;
+}
+
+.kpi-diverging-grid-plot {
+  position: absolute;
+  top: 0;
+  right: calc(var(--kpi-diverging-value-width, 5.5rem) + var(--kpi-diverging-value-gap, .65rem));
+  bottom: 0;
+  left: calc(var(--kpi-diverging-label-width) + var(--kpi-diverging-label-gap));
+  border-right: .0625rem solid var(--results-border, #e4ded3);
+  border-bottom: .0625rem solid var(--results-border, #e4ded3);
+  border-left: .0625rem solid var(--results-border, #e4ded3);
+}
+
+.kpi-diverging-grid-plot > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: .0625rem solid color-mix(in srgb, var(--results-border, #e4ded3) 70%, transparent);
+}
+
+.kpi-diverging-grid-plot > span.is-zero {
+  border-left: .125rem solid var(--results-muted, #756c5e);
+}
+
+.kpi-diverging-plot {
+  grid-template-columns: minmax(0, 1fr) var(--kpi-diverging-value-width, 5.5rem);
+  gap: var(--kpi-diverging-value-gap, .65rem);
+}
+
+.kpi-diverging-track {
+  display: block;
+  height: 1rem;
+}
+
+.kpi-diverging-bar {
+  position: absolute;
+  top: 50%;
+  height: .7rem;
+  transform: translateY(-50%);
+}
+
+.kpi-diverging-bar.negative {
+  right: 50%;
+  border-radius: .3rem 0 0 .3rem;
+}
+
+.kpi-diverging-bar.positive {
+  left: 50%;
+  border-radius: 0 .3rem .3rem 0;
+}
+
+.kpi-diverging-row {
+  position: relative;
+  z-index: 1;
+}
+
 @media (max-width: 700px) {
   .kpi-chart-explorer { padding: 1rem; }
   .kpi-chart-row { grid-template-columns: 1fr; gap: .35rem; }
@@ -3587,8 +3691,8 @@ textarea {
 }
 
 .prosumer-results-page .kpi-chart-row {
-  grid-template-columns: 12rem minmax(0, 1fr);
-  column-gap: .55rem;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  column-gap: .4rem;
 }
 
 .prosumer-results-page .kpi-progress-line,
@@ -3604,7 +3708,7 @@ textarea {
 }
 
 .prosumer-results-page .kpi-coverage-axis {
-  margin-left: calc(12rem + .55rem);
+  margin-left: calc(4rem + .4rem);
 }
 
 @media (max-width: 700px) {
@@ -3621,10 +3725,46 @@ textarea {
   .prosumer-results-page .kpi-coverage-axis {
     margin-left: 0;
   }
+
+  .prosumer-results-page .kpi-diverging-chart {
+    --kpi-diverging-label-width: 4rem;
+  }
+
+  .prosumer-results-page .kpi-diverging-chart .kpi-diverging-axis-row,
+  .prosumer-results-page .kpi-diverging-chart .kpi-diverging-row {
+    grid-template-columns: var(--kpi-diverging-label-width) minmax(0, 1fr);
+  }
 }
 
 .indicator-card-content > .indicator-card-value {
   display: block;
   width: 100%;
   text-align: center;
+}
+
+/* El primer gràfic no necessita separació superior */
+.kpi-indicator-chart {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* La separació només apareix quan hi ha un gràfic abans */
+.kpi-indicator-chart + .kpi-indicator-chart {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+/* Reduir l'espai entre el títol del gràfic i el contingut */
+.kpi-indicator-chart-heading {
+  margin-bottom: 12px;
+}
+
+/* Evitar que el gràfic de cobertura afegeixi espai extra */
+.kpi-coverage-chart {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
 }

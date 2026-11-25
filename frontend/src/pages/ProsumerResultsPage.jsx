@@ -9,6 +9,7 @@ import { api } from "../api/api";
 import { PROSUMER_COLUMNS, PROSUMER_SECTIONS, getKpiMeta } from "../utils/prosumerKpiMeta";
 
 export default function ProsumerResultsPage() {
+  const COVERAGE_KEYS = ["selfSufficiency", "gridDependency"];
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const simulationId = searchParams.get("simulation");
@@ -93,12 +94,40 @@ export default function ProsumerResultsPage() {
   const handleKpiToggle = (sectionId, key) => {
     setSelectedKpis(current => {
       const currentKeys = current[sectionId] ?? [];
-      if (currentKeys.includes(key)) {
-        return { ...current, [sectionId]: currentKeys.filter(item => item !== key) };
+
+      // Self-Sufficiency and Grid Dependency
+      // always behave as a single chart selection.
+      if (COVERAGE_KEYS.includes(key)) {
+        const bothSelected = COVERAGE_KEYS.every(item =>
+          currentKeys.includes(item)
+        );
+
+        const newKeys = bothSelected
+          ? currentKeys.filter(item => !COVERAGE_KEYS.includes(item))
+          : [
+              ...currentKeys.filter(item => !COVERAGE_KEYS.includes(item)),
+              ...COVERAGE_KEYS
+            ];
+
+        return { ...current, [sectionId]: newKeys };
       }
+
+      if (currentKeys.includes(key)) {
+        return {
+          ...current,
+          [sectionId]: currentKeys.filter(item => item !== key)
+        };
+      }
+
       const newGroup = getKpiMeta(key).group;
-      const compatible = currentKeys.filter(item => getKpiMeta(item).group === newGroup);
-      return { ...current, [sectionId]: [...compatible, key] };
+      const compatible = currentKeys.filter(
+        item => getKpiMeta(item).group === newGroup
+      );
+
+      return {
+        ...current,
+        [sectionId]: [...compatible, key]
+      };
     });
   };
 
