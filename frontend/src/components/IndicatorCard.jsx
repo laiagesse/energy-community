@@ -5,6 +5,7 @@ export default function IndicatorCard({
   description,
   info,
   value,
+  valueTone = "neutral",
   className = "",
   children
 }) {
@@ -19,7 +20,7 @@ export default function IndicatorCard({
       {description && <p className="indicator-card-description">{description}</p>}
       <div className="indicator-card-content">
         {value !== undefined && value !== null && (
-          <strong className="large-number indicator-card-value">{value}</strong>
+          <strong className={`large-number indicator-card-value indicator-value-${valueTone}`}>{value}</strong>
         )}
         {children}
       </div>

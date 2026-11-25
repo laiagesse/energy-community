@@ -17,6 +17,20 @@ const colors = {
   purple: "#8a7799"
 };
 
+function getIndicatorTone(value, {
+  direction = "higher",
+  neutralAt = 0,
+  precision = 1
+} = {}) {
+  if (!Number.isFinite(value)) return "neutral";
+
+  const difference = Number((value - neutralAt).toFixed(precision));
+  if (difference === 0) return "neutral";
+
+  const isPositive = direction === "higher" ? difference > 0 : difference < 0;
+  return isPositive ? "positive" : "negative";
+}
+
 function Legend({ items }) {
   return (
     <div className="chart-legend">
@@ -42,6 +56,7 @@ export default function CommunityResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredCoverage, setHoveredCoverage] = useState(null);
+  const [selectedCoveragePeriodId, setSelectedCoveragePeriodId] = useState(null);
   const [billSort, setBillSort] = useState({ key: null, direction: "asc" });
   const [coverageMousePosition, setCoverageMousePosition] = useState({
     x: 0,
@@ -132,6 +147,17 @@ export default function CommunityResultsPage() {
     item => item.id === period
   );
   const selectedPeriodLabel = selectedPeriodData?.label ?? "";
+  const periodReference = period === "annual"
+    ? "the year"
+    : selectedPeriodLabel || "the selected period";
+  const periodDisplayLabel = period === "annual"
+    ? "Annual"
+    : selectedPeriodLabel || "Selected-period";
+  const paybackUnit = period === "annual"
+    ? "years"
+    : periodType === "season"
+      ? "seasons"
+      : "months";
   const kpis = selectedPeriodData?.kpis ?? {};
 
   const scrollTo = id => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -152,6 +178,11 @@ export default function CommunityResultsPage() {
   const communitySavingsPercent = billWithoutCommunity > 0
     ? communitySaved / billWithoutCommunity * 100
     : null;
+  const communitySavingsTone = getIndicatorTone(communitySavingsPercent, { precision: 1 });
+  const emissionsReductionPercent = kpis.environmentalImpact?.value != null
+    ? (1 - kpis.environmentalImpact.value) * 100
+    : null;
+  const emissionsReductionTone = getIndicatorTone(emissionsReductionPercent, { precision: 0 });
   const p2pSurplusPercent = p2pSurplus == null ? null : p2pSurplus * 100;
   const otherSurplusPercent = p2pSurplusPercent == null ? null : 100 - p2pSurplusPercent;
   const displayPeriods = periods.filter(item => item.id !== "annual");
@@ -175,19 +206,34 @@ export default function CommunityResultsPage() {
       p2pKwh: totalLoad != null ? totalLoad * p2p / 100 : null
     };
   });
+  const coverageTickCount = 5;
+  const getNiceCoverageStep = value => {
+    if (value <= 0) return 1;
+    const magnitude = 10 ** Math.floor(Math.log10(value));
+    const fraction = value / magnitude;
+    const niceFraction = [1, 2, 2.5, 5, 10].find(step => step >= fraction) ?? 10;
+    return niceFraction * magnitude;
+  };
   const maxTotalLoad = Math.max(
     0,
     ...coverageData.map(item => item.totalLoad ?? 0)
   );
   const hasTotalLoad = coverageData.some(item => item.totalLoad != null);
-  const chartScale = maxTotalLoad || 1;
-  const coverageTicks = Array.from({ length: 5 }, (_, index) => {
-    const fraction = index / 4;
-    return {
-      value: maxTotalLoad * fraction,
-      position: 100 - fraction * 100
-    };
-  });
+  const coverageTickSize = getNiceCoverageStep(maxTotalLoad / coverageTickCount);
+  const coverageTickIntervals = maxTotalLoad > 0
+    ? Math.ceil(maxTotalLoad / coverageTickSize)
+    : coverageTickCount;
+  const chartScale = coverageTickSize * coverageTickIntervals;
+  const coverageTickFractionDigits = coverageTickSize < 0.1
+    ? 3
+    : coverageTickSize < 1 ? 2 : 1;
+  const coverageTicks = Array.from({ length: coverageTickIntervals + 1 }, (_, index) => ({
+    value: coverageTickSize * index,
+    position: 100 - index / coverageTickIntervals * 100
+  }));
+  const selectedCoverage = coverageData.find(
+    item => item.id === selectedCoveragePeriodId
+  );
   const billRows = displayPeriods
     .map(item => {
       const billWithCommunity = item.kpis?.totalFinalBill?.value;
@@ -292,54 +338,60 @@ export default function CommunityResultsPage() {
       <section className="summary-grid">
         <IndicatorCard
           title="Total saved"
-          description={`${period === "annual" ? "Annual" : "Monthly"} community savings`}
+          description={`${periodDisplayLabel} community savings`}
           value={kpis.totalSaved ? `${kpis.totalSaved.value.toFixed(0)} €` : "—"}
+          valueTone={getIndicatorTone(kpis.totalSaved?.value, { precision: 0 })}
           className="summary-card"
-          info={
-            <>
-              <p>Total savings achieved by the energy community compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
-              <p>Higher values mean greater economic benefits.</p>
-            </>
-          }
+          info="Savings achieved by the community compared with purchasing all consumed electricity from the grid."
         />
 
         <IndicatorCard
           title="Self-sufficiency"
           description="Consumption covered by own resources"
           value={kpis.selfSufficiency ? `${(kpis.selfSufficiency.value * 100).toFixed(1)} %` : "—"}
+          valueTone={getIndicatorTone(kpis.selfSufficiency?.value == null
+            ? null
+            : kpis.selfSufficiency.value * 100, {
+            neutralAt: 50,
+            precision: 1
+          })}
           className="summary-card"
           info={
             <>
-              <p>Share of total community demand covered by locally generated energy, either consumed directly or stored in batteries.</p>
-              <p>Energy received through peer-to-peer (P2P) exchanges is not included.</p>
+              <p>Total community demand covered by locally generated energy, either consumed directly or stored in batteries.</p>
               <p>Higher values mean less dependence on external electricity.</p>
             </>
           }
         />
 
         <IndicatorCard
-          title="Fairness"
-          description="Distribution equity"
+          title="Fairness index"
+          description="Savings distribution equity"
           value={kpis.fairness ? kpis.fairness.value.toFixed(3) : "—"}
+          valueTone={getIndicatorTone(kpis.fairness?.value, {
+            neutralAt: 0.5,
+            precision: 3
+          })}
           className="summary-card"
           info={
             <>
-              <p>Measures how evenly the economic savings of each community member are distributed in relation to the amount of energy each one generates.</p>
-              <p>Values closer to 1 indicate a more balanced distribution, while lower values indicate greater differences.</p>
+              <p>Compares members' savings per unit of generation.</p>
+              <p>Values closer to 1 indicate a more even distribution, while lower values indicate greater differences.</p>
             </>
           }
         />
 
         <IndicatorCard
           title="Avoided emissions"
-          description="Net annual CO₂ reduction"
+          description={period === "annual"
+            ? "Net annual CO₂-eq reduction"
+            : `Net CO₂-eq reduction in ${selectedPeriodLabel || "the selected period"}`}
           value={kpis.avoidedEmissions ? `${kpis.avoidedEmissions.value.toFixed(0)} kg` : "—"}
+          valueTone={getIndicatorTone(kpis.avoidedEmissions?.value, { precision: 0 })}
           className="summary-card"
           info={
             <>
-              <p>Estimates the net annual CO₂-equivalent emissions avoided by the community.</p>
-              <p>It considers the reduction in grid electricity use as well as the estimated footprint of the installed equipment.</p>
-              <p>Higher values mean a greater net reduction in emissions.</p>
+              <p>Net CO₂-equivalent emissions avoided after accounting for grid imports and equipment emissions.</p>
             </>
           }
         />
@@ -353,8 +405,7 @@ export default function CommunityResultsPage() {
             description={`${selectedPeriodLabel} consumption coverage by energy source`}
             info={
               <>
-                <p>Shows how the total electricity consumed by the community is covered by its own resources, electricity purchased from the grid and peer-to-peer (P2P) exchanges.</p>
-                <p>Each percentage represents the share of total community consumption covered by that source.</p>
+                <p>Shows how total community electricity demand is covered by own resources, grid imports and P2P energy exchanges.</p>
               </>
             }
           >
@@ -406,15 +457,21 @@ export default function CommunityResultsPage() {
 
           <IndicatorCard
             title="Community direct self-consumption"
-            description="Share of community generation used immediately without battery storage"
+            description="Generated energy consumed directly by its owners"
             className="direct-self-consumption-card"
             value={kpis.selfConsumption?.value != null
               ? `${(kpis.selfConsumption.value * 100).toFixed(1)} %`
               : "—"}
+            valueTone={getIndicatorTone(kpis.selfConsumption?.value == null
+              ? null
+              : kpis.selfConsumption.value * 100, {
+              neutralAt: 50,
+              precision: 1
+            })}
             info={
               <>
-                <p>Measures the share of the community's total energy generation that members consume immediately, without storing it in a battery.</p>
-                <p>Higher values mean more locally generated energy is used directly.</p>
+                <p>Share of community generation consumed directly, without battery storage.</p>
+                <p>Higher values mean more generated energy is used locally.</p>
               </>
             }
           >
@@ -424,22 +481,17 @@ export default function CommunityResultsPage() {
           </IndicatorCard>
 
           <IndicatorCard
-            title="Surplus energy distribution"
-            description="How excess community-generated electricity is distributed"
-            info={
-              <>
-                <p>Shows how the surplus electricity generated by the community is distributed between peer-to-peer (P2P) sales and exports to the electricity grid.</p>
-                <p>Each percentage represents the share of total surplus energy allocated to each destination.</p>
-              </>
-            }
+            title="Community surplus distribution"
+            description="Distribution of excess generated electricity"
+            info="Shows how the community's surplus electricity is distributed between P2P energy exchanges and exports to the grid."
           >
           <div className="donut-card-content">
             <DonutChart
               totalConsumption={totalEnergySurplus != null ? totalEnergySurplus.toFixed(1) : "—"}
               label="SURPLUS kWh"
-              segments={p2pSurplusPercent == null ? [] : [
+              segments={[
                 {
-                  label: "P2P trading index in surplus",
+                  label: "P2P exchange",
                   value: p2pSurplusPercent,
                   quantity: totalEnergySurplus != null
                     ? (totalEnergySurplus * p2pSurplus).toFixed(1)
@@ -447,7 +499,7 @@ export default function CommunityResultsPage() {
                   color: colors.blue
                 },
                 {
-                  label: "Other surplus",
+                  label: "Grid export",
                   value: otherSurplusPercent,
                   quantity: totalEnergySurplus != null
                     ? (totalEnergySurplus * (1 - p2pSurplus)).toFixed(1)
@@ -459,12 +511,12 @@ export default function CommunityResultsPage() {
 
             <Legend items={[
               {
-                label: "P2P trading index in surplus",
+                label: "P2P exchange",
                 value: p2pSurplusPercent != null ? `${p2pSurplusPercent.toFixed(1)} %` : "—",
                 color: colors.blue
               },
               {
-                label: "Other surplus",
+                label: "Grid export",
                 value: otherSurplusPercent != null ? `${otherSurplusPercent.toFixed(1)} %` : "—",
                 color: colors.red
               }
@@ -472,18 +524,13 @@ export default function CommunityResultsPage() {
           </div>
         </IndicatorCard>
         </div>
-        <IndicatorCard
-          title={`${periodType === "month" ? "Monthly" : "Seasonal"} consumption coverage`}
-          description="Share of community consumption covered by each energy source in every period"
-          className="chart-card"
-          info={
-            <>
-              <p>Compares the share of community electricity consumption covered by own resources, grid purchases and peer-to-peer exchanges in each period.</p>
-              <p>Each period's total load sets that bar's height; the shared y-axis shows kWh.</p>
-              <p>Within each bar, the segments are percentages of that period's total load (100%). Hover to see both the percentage and kWh.</p>
-            </>
-          }
-        >
+        {period === "annual" && (
+          <IndicatorCard
+            title="Monthly consumption coverage"
+            description="Share of community consumption covered by each energy source in every month"
+            className="chart-card"
+            info="Hover over a segment to see its share and energy. Click a period to view its total energy consumption."
+          >
           <div className="chart-heading">
             <Legend items={[
               { label: "Own resources", color: colors.green },
@@ -492,6 +539,7 @@ export default function CommunityResultsPage() {
             ]} />
           </div>
           <div className="coverage-chart-layout" role="group" aria-label="Consumption coverage by period">
+            <div className="coverage-y-axis-title">Total demand (kWh)</div>
             <div className="coverage-y-axis" aria-label="Total load in kilowatt-hours">
               {coverageTicks.map(tick => (
                 <span
@@ -500,7 +548,9 @@ export default function CommunityResultsPage() {
                   style={{ top: `${tick.position}%` }}
                 >
                   {hasTotalLoad
-                    ? tick.value.toLocaleString("en-GB", { maximumFractionDigits: 1 })
+                    ? tick.value.toLocaleString("en-GB", {
+                      maximumFractionDigits: coverageTickFractionDigits
+                    })
                     : "—"} kWh
                 </span>
               ))}
@@ -530,8 +580,19 @@ export default function CommunityResultsPage() {
 
                   return (
                     <div
-                      className={`stack-column${hoveredCoverage?.periodId === item.id ? " is-hovered" : ""}`}
+                      className={`stack-column${hoveredCoverage?.periodId === item.id ? " is-hovered" : ""}${selectedCoveragePeriodId === item.id ? " is-selected" : ""}`}
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={selectedCoveragePeriodId === item.id}
+                      aria-label={`Select ${item.label}; total consumption ${item.totalLoad != null ? item.totalLoad.toFixed(1) : "unavailable"} kWh`}
+                      onClick={() => setSelectedCoveragePeriodId(item.id)}
+                      onKeyDown={event => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedCoveragePeriodId(item.id);
+                        }
+                      }}
                     >
                       <div className="stack-bars" style={{ height: `${barHeight}%` }}>
                         {segments.map(segment => (
@@ -573,15 +634,33 @@ export default function CommunityResultsPage() {
                 style={{ gridTemplateColumns: `repeat(${Math.max(coverageData.length, 1)}, minmax(0, 1fr))` }}
               >
                 {coverageData.map(item => (
-                  <span key={item.id} title={item.label}>
+                  <span
+                    className={selectedCoveragePeriodId === item.id ? "is-selected" : ""}
+                    key={item.id}
+                    title={item.label}
+                  >
                     {periodType === "month" ? item.label.slice(0, 3) : item.label}
                   </span>
                 ))}
               </div>
+              <div className="coverage-x-axis-title">Period</div>
             </div>
           </div>
+          {selectedCoverage && (
+            <p className="coverage-selected-total" role="status">
+              Total energy consumed in {selectedCoverage.label}:{" "}
+              <strong>
+                {selectedCoverage.totalLoad != null
+                  ? selectedCoverage.totalLoad.toLocaleString("en-GB", {
+                    maximumFractionDigits: 1
+                  })
+                  : "—"} kWh
+              </strong>
+            </p>
+          )}
 
-        </IndicatorCard>
+          </IndicatorCard>
+        )}
       </section>
 
       <section id="economics" className="result-section">
@@ -590,43 +669,38 @@ export default function CommunityResultsPage() {
           <IndicatorCard
             title="Community final electricity bill"
             className="bill-comparison-card"
-            description={`Total net electricity cost for the community per ${period === "annual" ? "year" : "month"}`}
+            description={period === "annual"
+              ? "Total net electricity cost for the community over the year"
+              : `Total net electricity cost for the community in ${selectedPeriodLabel || "the selected period"}`}
             value={communityFinalBill != null
               ? `${communityFinalBill.toFixed(0)} €`
               : "—"}
-            info={
-                <>
-                  <p>Represents the total net electricity cost of all community members for the selected period, taking into account electricity purchases from the grid and through P2P exchanges.</p>
-                  <p>Revenues from surplus energy sold to the grid or through P2P exchanges are deducted from these costs.</p>
-                </>
-            }
+            valueTone={communitySavingsTone}
+            info="Community's net electricity cost accounting for grid and P2P electricity purchases minus revenue from electricity sold."
           >
             {communitySavingsPercent != null && (
               <div className="bill-savings-section">
                 <hr />
-                <strong className={`bill-savings-result ${communitySaved < 0 ? "is-higher" : "is-lower"}`}>
-                  {Math.abs(communitySavingsPercent).toFixed(1)}%{" "}
-                  {communitySaved < 0 ? "higher" : "lower"} than without the community
+                <strong className={`bill-savings-result is-${communitySavingsTone}`}>
+                  {communitySavingsTone === "neutral"
+                    ? "About the same as without the community"
+                    : `${Math.abs(communitySavingsPercent).toFixed(1)}% ${communitySaved < 0 ? "higher" : "lower"} than without the community`}
                 </strong>
               </div>
             )}
           </IndicatorCard>
           <IndicatorCard
             title="Total saved"
-            description={`Estimated ${period === "annual" ? "annual" : "monthly"} economic savings`}
+            description={`${periodDisplayLabel} community savings`}
             value={kpis.totalSaved?.value != null
               ? `${kpis.totalSaved.value.toFixed(0)} €`
               : "—"}
-            info={
-                <>
-                  <p>Savings achieved by the community during the selected period compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
-                  <p>Higher values mean greater economic benefits.</p>
-                </>
-            }
+            valueTone={getIndicatorTone(kpis.totalSaved?.value, { precision: 0 })}
+            info="Savings achieved by the community compared with purchasing all consumed electricity from the grid."
           >
             <hr />
-            <p className="card-description">Equivalent to the baseline electricity costs of</p>
-            <strong className="households-number">
+            <p className="card-description">Equivalent to the grid-only electricity costs for</p>
+            <strong className={`households-number indicator-value-${getIndicatorTone(kpis.baselinePovertyHelp?.value, { precision: 1 })}`}>
               {kpis.baselinePovertyHelp?.value != null
                 ? `${kpis.baselinePovertyHelp.value.toFixed(1)} average households`
                 : "—"}
@@ -635,17 +709,13 @@ export default function CommunityResultsPage() {
         </div>
 
 
-        <IndicatorCard
-          title="Monthly electricity bill comparison"
-          description="Community bills compared with estimated costs without the community"
-          className="table-card"
-          info={
-                <>
-                  <p>Bill without community is calculated as the community bill with the community plus the saved amount for that period.</p>
-                  <p>The final row totals the periods shown; it is an annual total only when all 12 months are available.</p>
-                </>
-          }
-        >
+        {period === "annual" && (
+          <IndicatorCard
+            title="Monthly electricity bill comparison"
+            description="Comparison of electricity costs with and without the community across each month."
+            className="table-card"
+            info="Compares the estimated electricity costs without the community with the actual costs under the community energy-sharing model. The difference represents the savings achieved in each period."
+          >
           <div className="table-scroll">
             <table className="results-table">
               <thead>
@@ -700,13 +770,13 @@ export default function CommunityResultsPage() {
               </tbody>
             </table>
           </div>
-        </IndicatorCard>
+          </IndicatorCard>
+        )}
 
 
         <div className="economics-subsection">
           <div className="economics-subsection-heading">
             <h3>Return on investment</h3>
-            <p>Investment performance and estimated time needed to recover the initial investment.</p>
           </div>
 
           <div className="economics-summary-grid roi-summary-grid">
@@ -714,25 +784,28 @@ export default function CommunityResultsPage() {
               title="Total invested"
               description="Total investment in community energy assets"
               value={formatEuro(kpis.totalInvested?.value)}
-              info="Total community investment in generation and storage assets."
+              info="Upfront cost of installed generation and battery capacity."
             />
 
             <IndicatorCard
-              title="Community profit (ROI)"
-              description={`Return on the community investment for ${selectedPeriodLabel || "the selected period"}`}
+              title="Community profit"
+              description={`Return on the community investment for ${periodReference}`}
               value={kpis.profit?.value != null
                 ? `${(kpis.profit.value * 100).toFixed(1)} %`
                 : "—"}
-              info="Calculated as total community profit divided by total community investment for the selected simulated period."
+              valueTone={getIndicatorTone(kpis.profit?.value == null
+                ? null
+                : kpis.profit.value * 100, { precision: 1 })}
+              info="Indicates how much financial benefit the community generates from its investment."
             />
 
             <IndicatorCard
               title="Community payback time"
               description="Estimated time to recover the community investment"
               value={kpis.payback?.value != null
-                ? `${kpis.payback.value.toFixed(1)} months`
+                ? `${kpis.payback.value.toFixed(1)} ${paybackUnit}`
                 : "—"}
-              info="Calculated as total community investment divided by total community profit for the simulated period. With monthly simulations, the result is in months."
+              info="Estimates how long it takes for the community to recover its initial investment, based on the profit generated over the selected period."
             />
           </div>
         </div>
@@ -744,15 +817,19 @@ export default function CommunityResultsPage() {
         <SectionHeading title="Social" color={colors.purple} />
         <div className="two-cards">
           <IndicatorCard
-            title="Fairness (Fairness index)"
-            description="Equity in the distribution of community benefits"
+            title="Fairness index"
+            description="Equity in the distribution of community savings"
             value={kpis.fairness?.value != null
               ? kpis.fairness.value.toFixed(3)
               : "—"}
+            valueTone={getIndicatorTone(kpis.fairness?.value, {
+              neutralAt: 0.5,
+              precision: 3
+            })}
             info={
               <>
-                <p>Measures how evenly economic savings are distributed among community members relative to the energy each one generates.</p>
-                <p>Values closer to 1 indicate a more balanced distribution.</p>
+                <p>Compares members' savings per unit of generation.</p>
+                <p>Values closer to 1 indicate a more even distribution, while lower values indicate greater differences.</p>
               </>
             }
           />
@@ -762,7 +839,13 @@ export default function CommunityResultsPage() {
             value={kpis.selfSufficiencyGap?.value != null
               ? `${(kpis.selfSufficiencyGap.value * 100).toFixed(1)} pp`
               : "—"}
-            info="Measures the percentage-point difference in self-sufficiency between the community members with the highest and lowest self-sufficiency."
+            valueTone={getIndicatorTone(kpis.selfSufficiencyGap?.value == null
+              ? null
+              : kpis.selfSufficiencyGap.value * 100, {
+              direction: "lower",
+              precision: 1
+            })}
+            info="Gap between the highest and lowest member self-sufficiency. Smaller gaps mean more similar self-sufficiency."
           />
         </div>
       </section>
@@ -771,22 +854,24 @@ export default function CommunityResultsPage() {
         <SectionHeading title="Environmental" color={colors.blue} />
         <div className="two-cards">
           <IndicatorCard
-            title="Annual avoided emissions"
-            description="Net annual reduction in CO₂-equivalent emissions"
+            title="Avoided emissions"
+            description={period === "annual"
+              ? "Net annual CO₂-equivalent reduction"
+              : `Net CO₂-equivalent reduction in ${selectedPeriodLabel || "the selected period"}`}
             className="emissions-card"
             value={kpis.avoidedEmissions?.value != null
               ? `${kpis.avoidedEmissions.value.toFixed(0)} kg`
               : "—"}
+            valueTone={getIndicatorTone(kpis.avoidedEmissions?.value, { precision: 0 })}
             info={
               <>
-                <p>Estimates the net annual emissions avoided by the community compared with purchasing all energy from the grid.</p>
-                <p>It accounts for reduced grid electricity use and the estimated footprint of the installed equipment.</p>
+                <p>Net CO₂-equivalent emissions avoided after accounting for grid imports and equipment emissions.</p>
               </>
             }
           >
             <div className="emissions-explainer">
-              <strong> {kpis.environmentalImpact?.value != null
-                ? `${(100- kpis.environmentalImpact.value * 100).toFixed(0)}% fewer emissions than without the community.`
+              <strong className={`indicator-value-${emissionsReductionTone}`}> {emissionsReductionPercent != null
+                ? `${emissionsReductionPercent.toFixed(0)}% fewer emissions than without the community.`
                 : "—"}  
               </strong>
               <p>  {kpis.environmentalImpact?.value != null
@@ -797,11 +882,11 @@ export default function CommunityResultsPage() {
           </IndicatorCard>
           <IndicatorCard
             title="Carbon payback time"
-            description="Time for carbon savings to offset installation emissions"
+            description="Time to offset installation emissions"
             value={kpis.carbonPaybackTime?.value != null
               ? `${kpis.carbonPaybackTime.value.toFixed(1)} years`
               : "—"}
-            info="Estimates the years required for the community's carbon savings to offset the emissions generated by manufacturing the installations."
+            info="Estimates how long it takes for avoided emissions to offset the initial emissions generated by the equipment installation."
           />
         </div>
       </section>

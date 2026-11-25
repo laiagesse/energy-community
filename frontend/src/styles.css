@@ -1248,9 +1248,19 @@ h1 {
 .chart-heading .chart-legend { flex-direction: row; flex-wrap: wrap; gap: .875rem; }
 .coverage-chart-layout {
   display: grid;
-  grid-template-columns: 4.25rem minmax(0, 1fr);
+  grid-template-columns: 1rem 4.25rem minmax(0, 1fr);
   gap: .5rem;
   margin-top: .75rem;
+}
+.coverage-y-axis-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--results-muted);
+  font-size: .65rem;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
 }
 .coverage-y-axis {
   position: relative;
@@ -1305,8 +1315,17 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
+  cursor: pointer;
 }
 .stack-column.is-hovered { z-index: 10; }
+.stack-column:focus-visible {
+  outline: .125rem solid var(--results-green);
+  outline-offset: .125rem;
+}
+.stack-column.is-selected .stack-bars {
+  outline: .125rem solid var(--results-green);
+  outline-offset: .125rem;
+}
 .stack-bars {
   display: flex;
   width: 100%;
@@ -1317,7 +1336,7 @@ h1 {
   overflow: hidden;
   border-radius: .125rem .125rem 0 0;
 }
-.stack-bars i { display: block; width: 100%; flex: 0 0 auto; cursor: crosshair; }
+.stack-bars i { display: block; width: 100%; flex: 0 0 auto; cursor: pointer; }
 .coverage-period-labels {
   display: grid;
   gap: .625rem;
@@ -1331,6 +1350,26 @@ h1 {
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.coverage-period-labels > span.is-selected {
+  color: var(--results-ink);
+  font-weight: 700;
+}
+.coverage-x-axis-title {
+  margin-top: .375rem;
+  color: var(--results-muted);
+  font-size: .65rem;
+  text-align: center;
+}
+.coverage-selected-total {
+  margin: .75rem 0 0;
+  padding: .625rem .75rem;
+  border: .0625rem solid var(--results-border);
+  border-radius: .5rem;
+  background: var(--results-header-cell);
+  color: var(--results-ink);
+  font-size: .75rem;
+  text-align: right;
 }
 /* Economic results, tables and return-on-investment cards */
 
@@ -1707,9 +1746,9 @@ h1 {
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .donut-card-content { flex-wrap: wrap; }
   .chart-legend { gap: .5rem; }
-  .coverage-chart-layout { grid-template-columns: 3.5rem minmax(0, 1fr); gap: .25rem; }
+  .coverage-chart-layout { grid-template-columns: .8rem 3.5rem minmax(0, 1fr); gap: .25rem; }
   .coverage-plot, .coverage-period-labels { gap: .25rem; }
-  .coverage-y-tick, .coverage-period-labels > span { font-size: .5625rem; }
+  .coverage-y-tick, .coverage-period-labels > span, .coverage-y-axis-title, .coverage-x-axis-title { font-size: .5625rem; }
   .kpi-table { min-width: 58rem; }
   .comparison-table { min-width: 42rem; }
 }
@@ -2852,6 +2891,10 @@ textarea {
 }
 
 .indicator-card-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -2880,13 +2923,24 @@ textarea {
   line-height: 1.4;
 }
 
-.bill-savings-result.is-lower {
+.indicator-value-positive,
+.bill-savings-result.is-positive {
   color: var(--results-green);
 }
 
-.bill-savings-result.is-higher {
+.indicator-value-negative,
+.bill-savings-result.is-negative {
   color: #a8433a;
 }
+
+.indicator-value-neutral,
+.bill-savings-result.is-neutral {
+  color: var(--results-ink);
+}
+
+.emissions-explainer strong.indicator-value-positive { color: var(--results-green); }
+.emissions-explainer strong.indicator-value-negative { color: #a8433a; }
+.emissions-explainer strong.indicator-value-neutral { color: var(--results-ink); }
 
 .indicator-card.direct-self-consumption-card .indicator-card-value {
   width: 100%;
@@ -3567,4 +3621,10 @@ textarea {
   .prosumer-results-page .kpi-coverage-axis {
     margin-left: 0;
   }
+}
+
+.indicator-card-content > .indicator-card-value {
+  display: block;
+  width: 100%;
+  text-align: center;
 }

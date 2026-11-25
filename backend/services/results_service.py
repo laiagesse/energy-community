@@ -205,7 +205,7 @@ def _annual_community_kpis(periods: list[dict], period_type: str) -> dict:
     profit = annual_kpis.get("profit", {}).get("value")
     if profit is not None:
         annual_kpis["payback"] = {
-            "value": 12 / profit if abs(profit) > 1e-5 else 0
+            "value": 1 / profit if abs(profit) > 1e-5 else 0
         }
     return annual_kpis
 
