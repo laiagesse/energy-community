@@ -235,7 +235,9 @@ export default function CompareResultsPage() {
           }))
         );
         const periodIds = getAvailablePeriods(availableExperiments).map(item => item.id);
-        setPeriod(current => periodIds.includes(current) ? current : (periodIds[0] ?? ""));
+        setPeriod(current => periodIds.includes(current)
+          ? current
+          : periodIds.find(id => id === "annual") ?? periodIds[0] ?? "");
       } catch (error) {
         console.error("Error loading experiments:", error);
       }

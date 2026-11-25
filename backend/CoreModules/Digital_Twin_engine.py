@@ -1250,6 +1250,8 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
     kpis["Net P2P Balance in KWh per simulated period"] = P2P_given - P2P_received 
     kpis["P2P Participation in KWh per simulated period"] = P2P_given + P2P_received
     kpis["Shared energy in KWH (G2P-P2G) per simulated period"] = G2P - P2G
+    kpis["Total consumption in kWh"] = total_load
+    kpis["Energy surplus in kWh"] = energy_surplus
     kpis["P2P trading index in deficit"] = np.divide(P2P_received, energy_deficit, out=np.zeros_like(P2P_received, dtype=float), where=(energy_deficit > 0)).round(4)
     kpis["P2P trading index in surplus"] = np.divide(P2P_given, energy_surplus, out=np.zeros_like(P2P_given, dtype=float), where=(energy_surplus > 0)).round(4)
     
@@ -1257,6 +1259,7 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
 
     economic_kpis['Total final bill in €']= net_final_bill
     economic_kpis['Saved by entering community €']= saved_money
+    economic_kpis['Total invested in €'] = total_invested
     economic_kpis['Profit in %'] = np.divide((total_profit_investment), total_invested, out=np.zeros_like(total_invested, dtype=float), where=(total_invested != 0)).round(4)
     economic_kpis['Profit PV in %'] = np.divide(PV_profit, invested_pv, out=np.zeros_like(invested_pv, dtype=float), where=(invested_pv != 0)).round(4)
     economic_kpis['Profit WT in %'] = np.divide(WT_profit, invested_wt, out=np.zeros_like(invested_wt, dtype=float), where=(invested_wt != 0)).round(4)
@@ -1291,6 +1294,23 @@ def compute_prosumer_kpis(prosumer_based_data, results_data, flow_P2P, time_base
     community = {}
 
     community["Community Self-Sufficiency"] = round(((own_consump.sum()+battery_disch_own_consump.sum()) / total_load.sum()), 4) if total_load.sum() != 0 else 0
+    community["Community total consumption in kWh"] = total_load.sum()
+    community["Community total energy surplus in kWh"] = energy_surplus.sum()
+    community["Community P2P trading index in surplus"] = (
+        round(P2P_given.sum() / energy_surplus.sum(), 4)
+        if energy_surplus.sum() > 0 else 0
+    )
+    community_profit = total_profit_investment.sum()
+    community_investment = total_invested.sum()
+    community["Community Profit in %"] = (
+        round(community_profit / community_investment, 4)
+        if community_investment != 0 else 0
+    )
+    community["Community Payback time"] = (
+        round(community_investment / community_profit, 4)
+        if community_investment > 1 and abs(community_profit) > 1e-5 else 0
+    )
+    community["Community total invested in €"] = community_investment
     community["Self-sufficiency difference between prosumers"] = kpis["Self-Sufficiency Ratio"].max() - kpis["Self-Sufficiency Ratio"].min()
     community["Community Grid Dependency"] = round(G2P.sum() / total_load.sum(), 4) if total_load.sum() != 0 else 0
     community["Community Self-Consumption"] = round((own_consump.sum()) / E_total.sum(), 4) if E_total.sum() != 0 else 0

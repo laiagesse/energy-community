@@ -687,7 +687,7 @@ h1 {
 }
 
 @media print {
-  .topbar,.results-actions,.results-tabs,.jump-links {
+  .topbar,.results-actions,.download-button,.results-tabs,.jump-links {
     display:none
   }
   .results-page {
@@ -747,10 +747,10 @@ h1 {
 .results-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
-.results-title-block { min-width: 0; }
+.results-title-block { flex: 1 1 auto; min-width: 0; }
 .results-heading h1 {
   margin: 0;
   color: var(--results-ink);
@@ -776,7 +776,7 @@ h1 {
 .results-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: .5rem;
   flex-wrap: wrap;
 }
@@ -838,6 +838,7 @@ h1 {
 }
 
 .download-button {
+  margin-left: auto;
   min-height: 2.25rem;
   border: .0625rem solid var(--results-border);
   border-radius: .5rem;
@@ -1245,20 +1246,58 @@ h1 {
   gap: 1rem;
 }
 .chart-heading .chart-legend { flex-direction: row; flex-wrap: wrap; gap: .875rem; }
-.stacked-chart {
+.coverage-chart-layout {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  gap: .5rem;
+  margin-top: .75rem;
+}
+.coverage-y-axis {
+  position: relative;
+  height: 10rem;
+}
+.coverage-y-tick {
+  position: absolute;
+  right: .25rem;
+  transform: translateY(-50%);
+  color: var(--results-muted);
+  font-size: .65rem;
+  white-space: nowrap;
+}
+.coverage-chart-main { min-width: 0; }
+.coverage-plot {
+  position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: space-between;
   gap: .625rem;
-  height: 10.75rem;
-  margin-top: .5rem;
-  padding: .25rem .25rem 0;
+  height: 10rem;
+  padding: 0 .25rem;
+  border-bottom: .0625rem solid var(--results-border);
+  border-left: .0625rem solid var(--results-border);
+  box-sizing: border-box;
 }
+.coverage-gridlines {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.coverage-gridline {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: .0625rem solid color-mix(in srgb, var(--results-border) 70%, transparent);
+}
+.coverage-tooltip {
+  max-width: min(15rem, 60vw);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.coverage-tooltip.is-right-aligned { transform: translate(-0.75rem, -110%); }
 .stack-column {
-  display: flex;
-  flex: 1 1 0;
-  min-width: 0;
   position: relative;
+  z-index: 1;
   display: flex;
   flex: 1 1 0;
   min-width: 0;
@@ -1266,20 +1305,33 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: .375rem;
 }
+.stack-column.is-hovered { z-index: 10; }
 .stack-bars {
   display: flex;
   width: 100%;
-  max-width: 10rem;
-  height: 9.5rem;
-  flex-direction: column;
+  max-width: 2.5rem;
+  flex: 0 0 auto;
+  flex-direction: column-reverse;
   justify-content: flex-start;
   overflow: hidden;
   border-radius: .125rem .125rem 0 0;
 }
-.stack-bars i { display: block; min-height: .0625rem; }
-.stack-column > span { color: var(--results-muted); font-size: .75rem; }
+.stack-bars i { display: block; width: 100%; flex: 0 0 auto; cursor: crosshair; }
+.coverage-period-labels {
+  display: grid;
+  gap: .625rem;
+  margin-top: .375rem;
+  padding: 0 .25rem;
+}
+.coverage-period-labels > span {
+  overflow: hidden;
+  color: var(--results-muted);
+  font-size: .75rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* Economic results, tables and return-on-investment cards */
 
 
@@ -1292,6 +1344,10 @@ h1 {
 
 .economics-summary-grid {
   margin-bottom: 1rem;
+}
+
+.roi-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .card-heading-row {
@@ -1651,13 +1707,14 @@ h1 {
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .donut-card-content { flex-wrap: wrap; }
   .chart-legend { gap: .5rem; }
-  .stacked-chart { gap: .25rem; }
-  .stack-column > span { font-size: .5625rem; }
+  .coverage-chart-layout { grid-template-columns: 3.5rem minmax(0, 1fr); gap: .25rem; }
+  .coverage-plot, .coverage-period-labels { gap: .25rem; }
+  .coverage-y-tick, .coverage-period-labels > span { font-size: .5625rem; }
   .kpi-table { min-width: 58rem; }
   .comparison-table { min-width: 42rem; }
 }
 @media print {
-  .results-back-link, .results-actions, .results-tabs, .jump-links, .add-scenario-button, .catalog-actions, .catalog-footer { display: none !important; }
+  .results-back-link, .results-actions, .download-button, .results-tabs, .jump-links, .add-scenario-button, .catalog-actions, .catalog-footer { display: none !important; }
   .results-page { width: 100%; padding: 0; }
   .result-card, .summary-card, .scenario-card, .indicator-catalog { break-inside: avoid; }
 }
@@ -2800,6 +2857,35 @@ textarea {
 
 .indicator-card-content > .indicator-card-value {
   display: block;
+}
+
+.indicator-card.bill-comparison-card .indicator-card-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.bill-savings-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bill-savings-result {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.bill-savings-result.is-lower {
+  color: var(--results-green);
+}
+
+.bill-savings-result.is-higher {
+  color: #a8433a;
 }
 
 .indicator-card.direct-self-consumption-card .indicator-card-value {

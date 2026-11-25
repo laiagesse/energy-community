@@ -65,7 +65,9 @@ export default function ProsumerDetailResultsPage() {
         if (!active) return;
         setData(result);
         const available = result.periods ?? [];
-        setPeriod(current => available.some(item => item.id === current) ? current : available[0]?.id ?? "");
+        setPeriod(current => available.some(item => item.id === current)
+          ? current
+          : available.find(item => item.id === "annual")?.id ?? available[0]?.id ?? "");
       } catch (err) {
         if (active) setError(err.message);
       } finally {
@@ -138,7 +140,7 @@ export default function ProsumerDetailResultsPage() {
                 return (
                   <article className="prosumer-detail-kpi" key={key}>
                     <span>{label}</span>
-                    <strong>{formatKpiValue(value, key)}</strong>
+                    <strong>{formatKpiValue(value, key, period)}</strong>
                   </article>
                 );
               })}

@@ -29,8 +29,11 @@ const UNITS = {
   netP2p: " kWh",
   p2pParticipation: " kWh",
   sharedEnergy: " kWh",
+  totalLoad: " kWh",
+  energySurplus: " kWh",
   finalBill: " €/month",
   saved: " €/month",
+  totalInvested: " €",
   payback: " months",
   avoidedEmissions: " kg CO₂ eq",
   carbonDebt: " kg CO₂ eq",
@@ -43,7 +46,7 @@ const UNITS = {
   batteryPayback: " months",
 };
 
-export function formatKpiValue(value, key) {
+export function formatKpiValue(value, key, period) {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value !== "number") return value;
 
@@ -63,6 +66,10 @@ export function formatKpiValue(value, key) {
   }).format(displayValue);
 
   if (PERCENTAGE_KPIS.has(key)) return `${formatted} %`;
+
+  if ((key === "finalBill" || key === "saved") && period === "annual") {
+    return `${formatted} €`;
+  }
 
   return `${formatted}${UNITS[key] ?? ""}`;
 }

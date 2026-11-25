@@ -67,7 +67,9 @@ export default function ProsumerResultsPage() {
         if (!active) return;
         setProsumerData(data);
         const available = data.periods ?? [];
-        if (!available.some(item => item.id === period)) setPeriod(available[0]?.id ?? "");
+        setPeriod(current => available.some(item => item.id === current)
+          ? current
+          : available.find(item => item.id === "annual")?.id ?? available[0]?.id ?? "");
       } catch (err) {
         if (active) setError(err.message);
       } finally {
@@ -143,12 +145,14 @@ export default function ProsumerResultsPage() {
               selectedKpis={sectionSelected}
               onKpiToggle={key => handleKpiToggle(section.id, key)}
               onProsumerClick={openProsumer}
+              period={period}
             />
             <KpiChartExplorer
               columns={sectionColumns}
               rows={prosumerRows}
               selectedKpis={sectionSelected}
               onKpiToggle={key => handleKpiToggle(section.id, key)}
+              period={period}
             />
           </section>
         );

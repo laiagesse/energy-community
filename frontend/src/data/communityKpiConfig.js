@@ -28,6 +28,12 @@ export const communityKpiSections = [
         format: "currency"
       },
       {
+        id: "totalInvested",
+        label: "Community total invested (€)",
+        direction: "none",
+        format: "currency"
+      },
+      {
         id: "baselinePovertyHelp",
         label: "Baseline poverty help",
         direction: "none",

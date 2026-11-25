@@ -5,8 +5,9 @@ import ResultsPageHeader from "../components/ResultsPageHeader";
 import SectionHeading from "../components/SectionHeading";
 import DonutChart from "../components/DonutChart";
 import IndicatorCard from "../components/IndicatorCard";
-import { monthlyBills, monthlyCoverage } from "../data/communityResults";
 import { api } from "../api/api";
+
+const MONTH_ORDER = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
 const colors = {
   green: "#3e7b48",
@@ -33,7 +34,7 @@ function Legend({ items }) {
 export default function CommunityResultsPage() {
   const [searchParams] = useSearchParams();
   const simulationId = searchParams.get("simulation") || "";
-  const [period, setPeriod] = useState("winter");
+  const [period, setPeriod] = useState("");
   const [alternative, setAlternative] = useState("");
   const [experiments, setExperiments] = useState([]);
   const [loadingExperiments, setLoadingExperiments] = useState(true);
@@ -107,7 +108,8 @@ export default function CommunityResultsPage() {
             setPeriod(current =>
               data.periods.some(item => item.id === current)
                 ? current
-                : data.periods[0].id
+                : data.periods.find(item => item.id === "annual")?.id
+                  ?? data.periods[0].id
             );
           }
         }
@@ -138,33 +140,121 @@ export default function CommunityResultsPage() {
   const ownResources = (kpis.selfSufficiency?.value ?? 0) * 100;
   const grid = (kpis.gridDependency?.value ?? 0) * 100;
   const p2p = 100 - ownResources - grid;
-  const coverageData = periods.map(item => {
+  const totalLoad = kpis.totalLoad?.value;
+  const totalEnergySurplus = kpis.energySurplus?.value;
+  const p2pSurplus = kpis.p2pSurplus?.value;
+  const communityFinalBill = kpis.totalFinalBill?.value;
+  const communitySaved = kpis.totalSaved?.value;
+  const billWithoutCommunity = Number.isFinite(communityFinalBill)
+    && Number.isFinite(communitySaved)
+    ? communityFinalBill + communitySaved
+    : null;
+  const communitySavingsPercent = billWithoutCommunity > 0
+    ? communitySaved / billWithoutCommunity * 100
+    : null;
+  const p2pSurplusPercent = p2pSurplus == null ? null : p2pSurplus * 100;
+  const otherSurplusPercent = p2pSurplusPercent == null ? null : 100 - p2pSurplusPercent;
+  const displayPeriods = periods.filter(item => item.id !== "annual");
+  const coverageData = displayPeriods.map(item => {
     const kpis = item.kpis ?? {};
 
     const grid = (kpis.gridDependency?.value ?? 0) * 100;
     const own = (kpis.selfSufficiency?.value ?? 0) * 100;
     const p2p = 100 - grid - own;
+    const totalLoad = kpis.totalLoad?.value;
 
     return {
       id: item.id,
       label: item.label,
+      totalLoad,
       grid,
       own,
-      p2p
+      p2p,
+      gridKwh: totalLoad != null ? totalLoad * grid / 100 : null,
+      ownKwh: totalLoad != null ? totalLoad * own / 100 : null,
+      p2pKwh: totalLoad != null ? totalLoad * p2p / 100 : null
     };
   });
+  const maxTotalLoad = Math.max(
+    0,
+    ...coverageData.map(item => item.totalLoad ?? 0)
+  );
+  const hasTotalLoad = coverageData.some(item => item.totalLoad != null);
+  const chartScale = maxTotalLoad || 1;
+  const coverageTicks = Array.from({ length: 5 }, (_, index) => {
+    const fraction = index / 4;
+    return {
+      value: maxTotalLoad * fraction,
+      position: 100 - fraction * 100
+    };
+  });
+  const billRows = displayPeriods
+    .map(item => {
+      const billWithCommunity = item.kpis?.totalFinalBill?.value;
+      const saved = item.kpis?.totalSaved?.value;
+      const billWithoutCommunity = billWithCommunity != null && saved != null
+        ? billWithCommunity + saved
+        : null;
+      return [item.label, billWithoutCommunity, billWithCommunity ?? null, saved ?? null];
+    })
+    .filter(row => periodType !== "month" || MONTH_ORDER.includes(String(row[0]).trim().slice(0, 3).toLowerCase()));
 
-  const sortedMonthlyBills = billSort.key === null ? monthlyBills : [...monthlyBills].sort((a, b) => {
-    const parseCell = value => {
-      const normalized = String(value ?? "").replace(/[^0-9,.-]/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
-      const number = normalized.trim() === "" ? NaN : Number(normalized);
-      return Number.isFinite(number) ? number : String(value ?? "").toLocaleLowerCase();
-    };
-    const av = parseCell(a[billSort.key]);
-    const bv = parseCell(b[billSort.key]);
-    const result = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv), undefined, { numeric: true });
-    return billSort.direction === "asc" ? result : -result;
+  const monthIndex = label => MONTH_ORDER.indexOf(String(label).trim().slice(0, 3).toLowerCase());
+  const sortedMonthlyBills = [...billRows].sort((a, b) => {
+    let result = 0;
+    if (billSort.key === null || billSort.key === 0) {
+      if (periodType === "month") {
+        result = monthIndex(a[0]) - monthIndex(b[0]);
+      } else if (billSort.key === 0) {
+        result = String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true });
+      }
+    } else {
+      const av = a[billSort.key];
+      const bv = b[billSort.key];
+      if (av == null || bv == null) {
+        result = av == null ? (bv == null ? 0 : 1) : -1;
+      } else {
+        result = av - bv;
+      }
+    }
+
+    return billSort.key === null || billSort.direction === "asc" ? result : -result;
   });
+  const sumBillColumn = column => (
+    billRows.length > 0 && billRows.every(row => Number.isFinite(row[column]))
+      ? billRows.reduce((total, row) => total + row[column], 0)
+      : null
+  );
+  const totalBillWithCommunity = sumBillColumn(2);
+  const totalSaved = sumBillColumn(3);
+  const totalBillWithoutCommunity = (
+    totalBillWithCommunity != null && totalSaved != null
+      ? totalBillWithCommunity + totalSaved
+      : null
+  );
+  const hasFullYear = periodType === "month"
+    && billRows.length === MONTH_ORDER.length
+    && MONTH_ORDER.every(month => billRows.some(row => monthIndex(row[0]) === MONTH_ORDER.indexOf(month)));
+  const billTotalLabel = hasFullYear ? "Annual total" : "Total for displayed periods";
+  const formatEuro = value => value == null
+    ? "—"
+    : `${value.toLocaleString("en-GB", { maximumFractionDigits: 0 })} €`;
+
+  const showCoverageTooltip = (event, item, segment) => {
+    const column = event.currentTarget.closest(".stack-column");
+    const rect = column.getBoundingClientRect();
+    setHoveredCoverage({
+      periodId: item.id,
+      label: segment.label,
+      value: segment.value,
+      quantity: segment.quantity,
+      color: segment.color
+    });
+    setCoverageMousePosition({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    });
+  };
 
   return (
     <main className="page-width results-page community-results-page">
@@ -202,7 +292,7 @@ export default function CommunityResultsPage() {
       <section className="summary-grid">
         <IndicatorCard
           title="Total saved"
-          description="Monthly community savings"
+          description={`${period === "annual" ? "Annual" : "Monthly"} community savings`}
           value={kpis.totalSaved ? `${kpis.totalSaved.value.toFixed(0)} €` : "—"}
           className="summary-card"
           info={
@@ -270,25 +360,25 @@ export default function CommunityResultsPage() {
           >
             <div className="donut-card-content">
               <DonutChart
-                totalConsumption="-"
+                totalConsumption={totalLoad != null ? totalLoad.toFixed(1) : "—"}
                 label="TOTAL kWh"
                 segments={[
                   {
                     label: "Own resources",
                     value: ownResources,
-                    quantity: 0,
+                    quantity: totalLoad != null ? (totalLoad * ownResources / 100).toFixed(1) : "—",
                     color: colors.green
                   },
                   {
                     label: "Grid",
                     value: grid,
-                    quantity: 0,
+                    quantity: totalLoad != null ? (totalLoad * grid / 100).toFixed(1) : "—",
                     color: colors.red
                   },
                   {
                     label: "P2P exchange",
                     value: p2p,
-                    quantity: 0,
+                    quantity: totalLoad != null ? (totalLoad * p2p / 100).toFixed(1) : "—",
                     color: colors.blue
                   }
                 ]}
@@ -345,27 +435,39 @@ export default function CommunityResultsPage() {
           >
           <div className="donut-card-content">
             <DonutChart
-              totalConsumption="100 %"
-              label="SURPLUS"
-              segments={[
+              totalConsumption={totalEnergySurplus != null ? totalEnergySurplus.toFixed(1) : "—"}
+              label="SURPLUS kWh"
+              segments={p2pSurplusPercent == null ? [] : [
                 {
-                  label: "P2P sales",
-                  value: 24,
-                  quantity: "24%",
+                  label: "P2P trading index in surplus",
+                  value: p2pSurplusPercent,
+                  quantity: totalEnergySurplus != null
+                    ? (totalEnergySurplus * p2pSurplus).toFixed(1)
+                    : "—",
                   color: colors.blue
                 },
                 {
-                  label: "Grid exports",
-                  value: 76,
-                  quantity: "76%",
+                  label: "Other surplus",
+                  value: otherSurplusPercent,
+                  quantity: totalEnergySurplus != null
+                    ? (totalEnergySurplus * (1 - p2pSurplus)).toFixed(1)
+                    : "—",
                   color: colors.red
                 }
               ]}
             />
 
             <Legend items={[
-              { label: "P2P sales", value: "24 %", color: colors.blue },
-              { label: "Grid exports", value: "76 %", color: colors.red }
+              {
+                label: "P2P trading index in surplus",
+                value: p2pSurplusPercent != null ? `${p2pSurplusPercent.toFixed(1)} %` : "—",
+                color: colors.blue
+              },
+              {
+                label: "Other surplus",
+                value: otherSurplusPercent != null ? `${otherSurplusPercent.toFixed(1)} %` : "—",
+                color: colors.red
+              }
             ]} />
           </div>
         </IndicatorCard>
@@ -377,7 +479,8 @@ export default function CommunityResultsPage() {
           info={
             <>
               <p>Compares the share of community electricity consumption covered by own resources, grid purchases and peer-to-peer exchanges in each period.</p>
-              <p>Hover over a segment to see its value.</p>
+              <p>Each period's total load sets that bar's height; the shared y-axis shows kWh.</p>
+              <p>Within each bar, the segments are percentages of that period's total load (100%). Hover to see both the percentage and kWh.</p>
             </>
           }
         >
@@ -388,88 +491,94 @@ export default function CommunityResultsPage() {
               { label: "P2P exchange", color: colors.blue }
             ]} />
           </div>
-          <div
-            className="stacked-chart"
-            role="img"
-            aria-label="Consumption coverage by period"
-          >
-            {coverageData.map(item => (
-              <div className="stack-column" key={item.id}>
-                <div className="stack-bars">
-
-                  <i
-                    style={{ height: `${item.p2p}%`, background: colors.blue }}
-                    onMouseEnter={() => setHoveredCoverage({
-                      periodId: item.id,
-                      label: "P2P exchange",
-                      value: item.p2p,
-                      color: colors.blue
-                    })}
-                    onMouseMove={event => {
-                      const rect = event.currentTarget.closest(".stack-column").getBoundingClientRect();
-                      setCoverageMousePosition({
-                        x: event.clientX - rect.left,
-                        y: event.clientY - rect.top
-                      });
-                    }}
-                    onMouseLeave={() => setHoveredCoverage(null)}
-                  />
-
-                  <i
-                    style={{ height: `${item.grid}%`, background: colors.red }}
-                    onMouseEnter={() => setHoveredCoverage({
-                      periodId: item.id,
-                      label: "Grid",
-                      value: item.grid,
-                      color: colors.red
-                    })}
-                    onMouseMove={event => {
-                      const rect = event.currentTarget.closest(".stack-column").getBoundingClientRect();
-                      setCoverageMousePosition({
-                        x: event.clientX - rect.left,
-                        y: event.clientY - rect.top
-                      });
-                    }}
-                    onMouseLeave={() => setHoveredCoverage(null)}
-                  />
-
-                  <i
-                    style={{ height: `${item.own}%`, background: colors.green }}
-                    onMouseEnter={() => setHoveredCoverage({
-                      periodId: item.id,
-                      label: "Own resources",
-                      value: item.own,
-                      color: colors.green
-                    })}
-                    onMouseMove={event => {
-                      const rect = event.currentTarget.closest(".stack-column").getBoundingClientRect();
-                      setCoverageMousePosition({
-                        x: event.clientX - rect.left,
-                        y: event.clientY - rect.top
-                      });
-                    }}
-                    onMouseLeave={() => setHoveredCoverage(null)}
-                  />
-
+          <div className="coverage-chart-layout" role="group" aria-label="Consumption coverage by period">
+            <div className="coverage-y-axis" aria-label="Total load in kilowatt-hours">
+              {coverageTicks.map(tick => (
+                <span
+                  className="coverage-y-tick"
+                  key={tick.position}
+                  style={{ top: `${tick.position}%` }}
+                >
+                  {hasTotalLoad
+                    ? tick.value.toLocaleString("en-GB", { maximumFractionDigits: 1 })
+                    : "—"} kWh
+                </span>
+              ))}
+            </div>
+            <div className="coverage-chart-main">
+              <div className="coverage-plot">
+                <div className="coverage-gridlines" aria-hidden="true">
+                  {coverageTicks.map(tick => (
+                    <span
+                      className="coverage-gridline"
+                      key={tick.position}
+                      style={{ top: `${tick.position}%` }}
+                    />
+                  ))}
                 </div>
+                {coverageData.map(item => {
+                  const segments = [
+                    { label: "Own resources", value: item.own, quantity: item.ownKwh, color: colors.green },
+                    { label: "Grid", value: item.grid, quantity: item.gridKwh, color: colors.red },
+                    { label: "P2P exchange", value: item.p2p, quantity: item.p2pKwh, color: colors.blue }
+                  ];
+                  const isRightAligned = coverageData.findIndex(period => period.id === item.id)
+                    >= coverageData.length / 2;
+                  const barHeight = item.totalLoad != null
+                    ? Math.max(0, item.totalLoad / chartScale * 100)
+                    : 0;
 
-                {hoveredCoverage?.periodId === item.id && (
-                  <div
-                    className="donut-tooltip"
-                    style={{
-                      "--tooltip-color": hoveredCoverage.color,
-                      left: `${coverageMousePosition.x}px`,
-                      top: `${coverageMousePosition.y}px`
-                    }}
-                  >
-                    <strong>{hoveredCoverage.label}</strong>
-                    <span>{hoveredCoverage.value.toFixed(1)} %</span>
-                  </div>
-                )}
+                  return (
+                    <div
+                      className={`stack-column${hoveredCoverage?.periodId === item.id ? " is-hovered" : ""}`}
+                      key={item.id}
+                    >
+                      <div className="stack-bars" style={{ height: `${barHeight}%` }}>
+                        {segments.map(segment => (
+                          <i
+                            key={segment.label}
+                            style={{ height: `${segment.value}%`, background: segment.color }}
+                            onMouseEnter={event => showCoverageTooltip(event, item, segment)}
+                            onMouseMove={event => showCoverageTooltip(event, item, segment)}
+                            onMouseLeave={() => setHoveredCoverage(null)}
+                          />
+                        ))}
+                      </div>
 
-                <span>{item.label}</span>
+                      {hoveredCoverage?.periodId === item.id && (
+                        <div
+                          className={`donut-tooltip coverage-tooltip${isRightAligned ? " is-right-aligned" : ""}`}
+                          style={{
+                            "--tooltip-color": hoveredCoverage.color,
+                            left: isRightAligned ? "auto" : `${coverageMousePosition.x}px`,
+                            right: isRightAligned ? ".75rem" : "auto",
+                            top: `${coverageMousePosition.y}px`
+                          }}
+                        >
+                          <strong>{hoveredCoverage.label}</strong>
+                          <span>
+                            {hoveredCoverage.value.toFixed(1)} % ·{" "}
+                            {hoveredCoverage.quantity != null
+                              ? `${hoveredCoverage.quantity.toFixed(1)} kWh`
+                              : "—"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+              <div
+                className="coverage-period-labels"
+                style={{ gridTemplateColumns: `repeat(${Math.max(coverageData.length, 1)}, minmax(0, 1fr))` }}
+              >
+                {coverageData.map(item => (
+                  <span key={item.id} title={item.label}>
+                    {periodType === "month" ? item.label.slice(0, 3) : item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
         </IndicatorCard>
@@ -479,14 +588,38 @@ export default function CommunityResultsPage() {
         <SectionHeading title="Economics" color={colors.ochre}/>
         <div className="economics-summary-grid">
           <IndicatorCard
+            title="Community final electricity bill"
+            className="bill-comparison-card"
+            description={`Total net electricity cost for the community per ${period === "annual" ? "year" : "month"}`}
+            value={communityFinalBill != null
+              ? `${communityFinalBill.toFixed(0)} €`
+              : "—"}
+            info={
+                <>
+                  <p>Represents the total net electricity cost of all community members for the selected period, taking into account electricity purchases from the grid and through P2P exchanges.</p>
+                  <p>Revenues from surplus energy sold to the grid or through P2P exchanges are deducted from these costs.</p>
+                </>
+            }
+          >
+            {communitySavingsPercent != null && (
+              <div className="bill-savings-section">
+                <hr />
+                <strong className={`bill-savings-result ${communitySaved < 0 ? "is-higher" : "is-lower"}`}>
+                  {Math.abs(communitySavingsPercent).toFixed(1)}%{" "}
+                  {communitySaved < 0 ? "higher" : "lower"} than without the community
+                </strong>
+              </div>
+            )}
+          </IndicatorCard>
+          <IndicatorCard
             title="Total saved"
-            description="Estimated monthly economic savings"
+            description={`Estimated ${period === "annual" ? "annual" : "monthly"} economic savings`}
             value={kpis.totalSaved?.value != null
               ? `${kpis.totalSaved.value.toFixed(0)} €`
               : "—"}
             info={
                 <>
-                  <p>Monthly savings achieved by the community compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
+                  <p>Savings achieved by the community during the selected period compared with the estimated cost of purchasing all consumed electricity from the grid.</p>
                   <p>Higher values mean greater economic benefits.</p>
                 </>
             }
@@ -499,20 +632,6 @@ export default function CommunityResultsPage() {
                 : "—"}
             </strong>
           </IndicatorCard>
-
-          <IndicatorCard
-            title="Community final electricity bill"
-            description="Total net electricity cost for the community per month"
-            value={kpis.totalFinalBill?.value != null
-              ? `${kpis.totalFinalBill.value.toFixed(0)} €`
-              : "—"}
-            info={
-                <>
-                  <p>Represents the total monthly net electricity cost of all community members, taking into account electricity purchases from the grid and through P2P exchanges.</p>
-                  <p>Revenues from surplus energy sold to the grid or through P2P exchanges are deducted from these costs.</p>
-                </>
-            }
-          />
         </div>
 
 
@@ -522,8 +641,8 @@ export default function CommunityResultsPage() {
           className="table-card"
           info={
                 <>
-                  <p>Compares the community's total electricity bill with the estimated cost if members purchased all their electricity from the grid without participating in the energy community.</p>
-                  <p>The monthly savings correspond to the difference between these two amounts. The final row shows the total for the year.</p>
+                  <p>Bill without community is calculated as the community bill with the community plus the saved amount for that period.</p>
+                  <p>The final row totals the periods shown; it is an annual total only when all 12 months are available.</p>
                 </>
           }
         >
@@ -532,7 +651,7 @@ export default function CommunityResultsPage() {
               <thead>
                 <tr>
                   {[
-                    ["Month", 0],
+                    [periodType === "month" ? "Month" : periodType === "season" ? "Season" : "Period", 0],
                     ["Bill without community", 1],
                     ["Bill with community", 2],
                     ["Saved", 3]
@@ -564,19 +683,19 @@ export default function CommunityResultsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedMonthlyBills.map(row => (
-                  <tr key={row[0]}>
+                {sortedMonthlyBills.map((row, index) => (
+                  <tr key={`${row[0]}-${index}`}>
                     <td>{row[0]}</td>
-                    <td>{row[1]}</td>
-                    <td>{row[2]}</td>
-                    <td className="saving-cell">{row[3]}</td>
+                    <td>{formatEuro(row[1])}</td>
+                    <td>{formatEuro(row[2])}</td>
+                    <td className="saving-cell">{formatEuro(row[3])}</td>
                   </tr>
                 ))}
                 <tr className="total-row">
-                  <td>Annual total</td>
-                  <td>3,170 €</td>
-                  <td>1,696 €</td>
-                  <td className="saving-cell">1,474 €</td>
+                  <td>{billTotalLabel}</td>
+                  <td>{formatEuro(totalBillWithoutCommunity)}</td>
+                  <td>{formatEuro(totalBillWithCommunity)}</td>
+                  <td className="saving-cell">{formatEuro(totalSaved)}</td>
                 </tr>
               </tbody>
             </table>
@@ -590,19 +709,30 @@ export default function CommunityResultsPage() {
             <p>Investment performance and estimated time needed to recover the initial investment.</p>
           </div>
 
-          <div className="economics-summary-grid">
+          <div className="economics-summary-grid roi-summary-grid">
             <IndicatorCard
-              title="Annual return on investment"
-              description="Percentage of the total installation investment returned each year"
-              value="- %"
-              info="Indicates the annual return generated by the investment in the installations, expressed as a percentage of the total amount invested."
+              title="Total invested"
+              description="Total investment in community energy assets"
+              value={formatEuro(kpis.totalInvested?.value)}
+              info="Total community investment in generation and storage assets."
             />
 
             <IndicatorCard
-              title="Estimated investment payback"
-              description="Estimated time needed to recover the initial investment"
-              value="≈ - years"
-              info="Estimates how many years are needed to recover the initial investment based on the annual return. It is calculated as 100 divided by the annual return percentage."
+              title="Community profit (ROI)"
+              description={`Return on the community investment for ${selectedPeriodLabel || "the selected period"}`}
+              value={kpis.profit?.value != null
+                ? `${(kpis.profit.value * 100).toFixed(1)} %`
+                : "—"}
+              info="Calculated as total community profit divided by total community investment for the selected simulated period."
+            />
+
+            <IndicatorCard
+              title="Community payback time"
+              description="Estimated time to recover the community investment"
+              value={kpis.payback?.value != null
+                ? `${kpis.payback.value.toFixed(1)} months`
+                : "—"}
+              info="Calculated as total community investment divided by total community profit for the simulated period. With monthly simulations, the result is in months."
             />
           </div>
         </div>

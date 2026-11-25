@@ -1,6 +1,6 @@
 export const PROSUMER_SECTIONS = [
   { id: "energy", title: "Energy KPIs", color: "#3e7b48" },
-  { id: "economic", title: "Economic KPIs", description: "Values and returns for the simulated month", color: "#b89b62" },
+  { id: "economic", title: "Economic KPIs", description: "Values and returns for the selected period", color: "#b89b62" },
   { id: "social", title: "Social KPIs", description: "Distribution of benefits, savings and investment", color: "#8a7799" },
   { id: "environmental", title: "Environmental KPIs", color: "#3d5e80" }
 ];

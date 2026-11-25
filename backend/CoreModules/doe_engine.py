@@ -92,6 +92,12 @@ def analyse_montecarlo_no_plots(all_prosumer, all_community, all_sum_analysis,
         "Community Self-Sufficiency", "Self-sufficiency difference between prosumers",
         "Community Grid Dependency",
         "Community Self-Consumption",
+        "Community total consumption in kWh",
+        "Community total energy surplus in kWh",
+        "Community P2P trading index in surplus",
+        "Community Profit in %",
+        "Community Payback time",
+        "Community total invested in €",
         "Community total final bill in €",
         "Community total saved in €",
         "Fairness index", 'Baseline poverty help', 
@@ -527,7 +533,8 @@ def load_doe_results_from_excel(file_path= "Results/Results_DOE/Original_Experim
 def build_kpi_table_with_ci(doe_matrix, p2p_method, source_name, target_kpis, is_community=True, ci_col_name='CI', checkpoint_folder="Results/Results_DOE/Original_Experiment/DOE_Individual_Experiments", baseline_levels=None):
     
     decimal_config = {
-    2: ['Community total saved in €', 'Avoided emissions (Kg CO2 eq)',
+    2: ['Community total saved in €', 'Community total invested in €',
+        'Total invested in €', 'Avoided emissions (Kg CO2 eq)',
         'Saved by entering community €'],
     4: ['Community Self-Sufficiency', 'Community Grid Dependency', 
         'Fairness index', 'EC savings appropiation', 'Profit in %',
@@ -750,6 +757,7 @@ def plot_difference_ci(df, factor_col, kpi_col, kpi_unit, prosumers=None, save_i
         "Community Self-Sufficiency", "Self-sufficiency difference between prosumers",
         "Community Grid Dependency", "Community Self-Consumption",
         "Community total final bill in €", "Community total saved in €",
+        "Community total invested in €",
         "Fairness index", 'Baseline poverty help', 'Avoided emissions (Kg CO2 eq)',
         'Enviromental impact', 'TOTAL carbon payback time'
     ]
@@ -757,6 +765,7 @@ def plot_difference_ci(df, factor_col, kpi_col, kpi_unit, prosumers=None, save_i
         "Community Self-Sufficiency", "Self-sufficiency difference between prosumers",
         "Community Grid Dependency", "Community Self-Consumption",
         "Community total final bill", "Community total saved",
+        "Community total invested",
         "Fairness index", 'Baseline poverty help', 'Avoided emissions',
         'Enviromental impact', 'Carbon payback time (months)'
     ]
@@ -767,6 +776,7 @@ def plot_difference_ci(df, factor_col, kpi_col, kpi_unit, prosumers=None, save_i
         'Shared energy in KWH (G2P-P2G) per simulated period', 'P2P trading index in deficit', 
         'P2P trading index in surplus', 'Total final bill in €',
         'Saved by entering community €', 'Profit in %',
+        'Total invested in €',
         'Profit PV in %', 'Profit WT in %', 'Profit batteries in %',
         'Payback time', 'Payback time PV', 'Payback time WT', 'Payback time BATT', 'Bill reduction in %',
         'EC gain appropiation', 'EC savings appropiation', 'Contribution into EC investment', 
@@ -780,6 +790,7 @@ def plot_difference_ci(df, factor_col, kpi_col, kpi_unit, prosumers=None, save_i
         'Shared energy (G2P-P2G)', 'P2P trading index in deficit', 
         'P2P trading index in surplus', 'Total final bill', 
         'Saved by entering community', 'Profit this period',
+        'Total invested',
         'Profit PV this period', 'Profit WT this period', 'Profit batteries this period',
         'Payback time', 'Payback time PV', 'Payback time WT', 'Payback time BATT', 'Bill reduction',
         'EC gain appropiation', 'EC savings appropiation', 'Contribution into EC investment', 
@@ -969,7 +980,9 @@ def get_kpi_unit(kpi_name):
     kpi_lower = kpi_name.lower()
     
     # Financial metrics (€)
-    if '€' in kpi_lower or 'saved' in kpi_lower:
+    if 'invested' in kpi_lower or 'investment' in kpi_lower:
+        return '€'
+    elif '€' in kpi_lower or 'saved' in kpi_lower:
         return '€/month'
         
     # Percentages, Ratios, and Indexes (%)
@@ -1020,6 +1033,7 @@ def generate_all_main_effects_plots(df_comm, df_pros, plot_to_vizualize, factors
         "Community Self-Consumption",
         "Community total final bill in €",
         "Community total saved in €",
+        "Community total invested in €",
         "Fairness index",
         'Baseline poverty help',
         'Avoided emissions (Kg CO2 eq)',
@@ -1038,6 +1052,7 @@ def generate_all_main_effects_plots(df_comm, df_pros, plot_to_vizualize, factors
         'P2P trading index in surplus',
         'Total final bill in €',
         'Saved by entering community €',
+        'Total invested in €',
         'Profit in %',
         'Profit PV in %',
         'Profit WT in %',
@@ -1698,6 +1713,7 @@ def run_postprocessing_app(doe_matrix, experiment_timestamp, baseline_p2p=None, 
 
     target_kpis = [
         'Community total saved in €',
+        'Community total invested in €',
         'Avoided emissions (Kg CO2 eq)',
         'Community Self-Sufficiency',
         'Community Grid Dependency',
@@ -1705,6 +1721,7 @@ def run_postprocessing_app(doe_matrix, experiment_timestamp, baseline_p2p=None, 
     ]
     target_prosumer_kpis = [
         'Profit in %',
+        'Total invested in €',
         'Payback time',
         'EC savings appropiation',
         'Saved by entering community €'
@@ -1772,6 +1789,7 @@ def run_postprocessing_app(doe_matrix, experiment_timestamp, baseline_p2p=None, 
         rename_map = {
             "Community total saved in €": "Community_total_saved",
             "Community total final bill in €": "Community_total_final_bill",
+            "Community total invested in €": "Community_total_invested",
             "Avoided emissions (Kg CO2 eq)": "Avoided_emissions",
             "Self-sufficiency difference between prosumers": "Self_suff_diff",
             "Community Self-Sufficiency": "Community_Self_Sufficiency",

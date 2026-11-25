@@ -14,7 +14,8 @@ export default function KpiTable({
   label,
   selectedKpis = [],
   onKpiToggle,
-  onProsumerClick
+  onProsumerClick,
+  period
 }) {
   const [sort, setSort] = useState({ key: null, direction: "asc" });
 
@@ -120,7 +121,7 @@ export default function KpiTable({
                         </button>
                       )
                       : row[column.key]
-                    : formatKpiValue(row[column.key], column.key)}
+                    : formatKpiValue(row[column.key], column.key, period)}
                 </td>
               ))}
             </tr>

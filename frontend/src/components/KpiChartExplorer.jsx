@@ -144,7 +144,7 @@ function StandardChart({ rows, column }) {
   );
 }
 
-export default function KpiChartExplorer({ columns, rows, selectedKpis = [], onKpiToggle }) {
+export default function KpiChartExplorer({ columns, rows, selectedKpis = [], onKpiToggle, period }) {
   if (!selectedKpis.length) return null;
 
   const selectedColumns = columns.filter(column => selectedKpis.includes(column.key));
@@ -169,7 +169,7 @@ export default function KpiChartExplorer({ columns, rows, selectedKpis = [], onK
           <section className="kpi-indicator-chart" key={column.key}>
             <div className="kpi-indicator-chart-heading">
               <strong>{column.label}</strong>
-              <span>{meta.unit}</span>
+              <span>{period === "annual" && (column.key === "finalBill" || column.key === "saved") ? "€" : meta.unit}</span>
               <button type="button" onClick={() => onKpiToggle(column.key)} aria-label={`Remove ${column.label}`}>×</button>
             </div>
             {DIVERGING_KEYS.includes(column.key)

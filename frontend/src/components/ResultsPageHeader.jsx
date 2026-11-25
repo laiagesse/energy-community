@@ -15,6 +15,10 @@ export default function ResultsPageHeader({
   const simulationQuery = simulationId
     ? `?simulation=${encodeURIComponent(simulationId)}`
     : location.search;
+  const orderedPeriods = [
+    ...periods.filter(item => item.id === "annual"),
+    ...periods.filter(item => item.id !== "annual"),
+  ];
 
   return (
     <>
@@ -44,27 +48,28 @@ export default function ResultsPageHeader({
             </select>
           )}
 
-          <div className="segmented-control" role="group">
-            {periods.map(item => (
-              <button
-                key={item.id}
-                type="button"
-                className={period === item.id ? "active" : ""}
-                onClick={() => onPeriodChange(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            className="download-button"
-            onClick={() => window.print()}
-          >
-            Download
-          </button>
+          {periods.length > 0 && (
+            <select
+              aria-label="Select period"
+              value={period ?? ""}
+              onChange={event => onPeriodChange(event.target.value)}
+            >
+              {orderedPeriods.map(item => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
+
+        <button
+          type="button"
+          className="download-button"
+          onClick={() => window.print()}
+        >
+          Download
+        </button>
       </div>
     </>
   );
