@@ -2923,24 +2923,6 @@ textarea {
   line-height: 1.4;
 }
 
-.indicator-value-positive,
-.bill-savings-result.is-positive {
-  color: var(--results-green);
-}
-
-.indicator-value-negative,
-.bill-savings-result.is-negative {
-  color: #a8433a;
-}
-
-.indicator-value-neutral,
-.bill-savings-result.is-neutral {
-  color: var(--results-ink);
-}
-
-.emissions-explainer strong.indicator-value-positive { color: var(--results-green); }
-.emissions-explainer strong.indicator-value-negative { color: #a8433a; }
-.emissions-explainer strong.indicator-value-neutral { color: var(--results-ink); }
 
 .indicator-card.direct-self-consumption-card .indicator-card-value {
   width: 100%;
@@ -3767,4 +3749,31 @@ textarea {
   padding: 0;
   border: none;
   background: transparent;
+}
+
+/* Category accents for result indicator cards.
+   The colours identify the section, not whether a result is good or bad. */
+.indicator-card-section-energy {
+  --indicator-section-color: var(--results-energy);
+}
+
+.indicator-card-section-economics {
+  --indicator-section-color: var(--results-economic);
+}
+
+.indicator-card-section-social {
+  --indicator-section-color: var(--results-social);
+}
+
+.indicator-card-section-environmental {
+  --indicator-section-color: var(--results-environmental);
+}
+
+.indicator-card[class*="indicator-card-section-"] {
+  border: .0625rem solid color-mix(
+    in srgb,
+    var(--indicator-section-color) 42%,
+    var(--results-border)
+  );
+  border-left: .15rem solid var(--indicator-section-color);
 }

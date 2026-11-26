@@ -17,19 +17,6 @@ const colors = {
   purple: "#8a7799"
 };
 
-function getIndicatorTone(value, {
-  direction = "higher",
-  neutralAt = 0,
-  precision = 1
-} = {}) {
-  if (!Number.isFinite(value)) return "neutral";
-
-  const difference = Number((value - neutralAt).toFixed(precision));
-  if (difference === 0) return "neutral";
-
-  const isPositive = direction === "higher" ? difference > 0 : difference < 0;
-  return isPositive ? "positive" : "negative";
-}
 
 function Legend({ items }) {
   return (
@@ -178,11 +165,9 @@ export default function CommunityResultsPage() {
   const communitySavingsPercent = billWithoutCommunity > 0
     ? communitySaved / billWithoutCommunity * 100
     : null;
-  const communitySavingsTone = getIndicatorTone(communitySavingsPercent, { precision: 1 });
   const emissionsReductionPercent = kpis.environmentalImpact?.value != null
     ? (1 - kpis.environmentalImpact.value) * 100
     : null;
-  const emissionsReductionTone = getIndicatorTone(emissionsReductionPercent, { precision: 0 });
   const p2pSurplusPercent = p2pSurplus == null ? null : p2pSurplus * 100;
   const otherSurplusPercent = p2pSurplusPercent == null ? null : 100 - p2pSurplusPercent;
   const displayPeriods = periods.filter(item => item.id !== "annual");
@@ -337,24 +322,19 @@ export default function CommunityResultsPage() {
 
       <section className="summary-grid">
         <IndicatorCard
+          section="economics"
           title="Total saved"
           description={`${periodDisplayLabel} community savings`}
           value={kpis.totalSaved ? `${kpis.totalSaved.value.toFixed(0)} €` : "—"}
-          valueTone={getIndicatorTone(kpis.totalSaved?.value, { precision: 0 })}
           className="summary-card"
           info="Savings achieved by the community compared with purchasing all consumed electricity from the grid."
         />
 
         <IndicatorCard
+          section="energy"
           title="Self-sufficiency"
           description="Consumption covered by own resources"
           value={kpis.selfSufficiency ? `${(kpis.selfSufficiency.value * 100).toFixed(1)} %` : "—"}
-          valueTone={getIndicatorTone(kpis.selfSufficiency?.value == null
-            ? null
-            : kpis.selfSufficiency.value * 100, {
-            neutralAt: 50,
-            precision: 1
-          })}
           className="summary-card"
           info={
             <>
@@ -365,13 +345,10 @@ export default function CommunityResultsPage() {
         />
 
         <IndicatorCard
+          section="social"
           title="Fairness index"
           description="Savings distribution equity"
           value={kpis.fairness ? kpis.fairness.value.toFixed(3) : "—"}
-          valueTone={getIndicatorTone(kpis.fairness?.value, {
-            neutralAt: 0.5,
-            precision: 3
-          })}
           className="summary-card"
           info={
             <>
@@ -382,12 +359,12 @@ export default function CommunityResultsPage() {
         />
 
         <IndicatorCard
+          section="environmental"
           title="Avoided emissions"
           description={period === "annual"
             ? "Net annual CO₂-eq reduction"
             : `Net CO₂-eq reduction in ${selectedPeriodLabel || "the selected period"}`}
           value={kpis.avoidedEmissions ? `${kpis.avoidedEmissions.value.toFixed(0)} kg` : "—"}
-          valueTone={getIndicatorTone(kpis.avoidedEmissions?.value, { precision: 0 })}
           className="summary-card"
           info={
             <>
@@ -401,6 +378,7 @@ export default function CommunityResultsPage() {
         <SectionHeading title="Energy" color={colors.green} />
         <div className="energy-cards">
           <IndicatorCard
+            section="energy"
             title="Community electricity consumption"
             description={`${selectedPeriodLabel} consumption coverage by energy source`}
             info={
@@ -456,18 +434,13 @@ export default function CommunityResultsPage() {
           </IndicatorCard>
 
           <IndicatorCard
+            section="energy"
             title="Community direct self-consumption"
             description="Generated energy consumed directly by its owners"
             className="direct-self-consumption-card"
             value={kpis.selfConsumption?.value != null
               ? `${(kpis.selfConsumption.value * 100).toFixed(1)} %`
               : "—"}
-            valueTone={getIndicatorTone(kpis.selfConsumption?.value == null
-              ? null
-              : kpis.selfConsumption.value * 100, {
-              neutralAt: 50,
-              precision: 1
-            })}
             info={
               <>
                 <p>Share of community generation consumed directly, without battery storage.</p>
@@ -481,6 +454,7 @@ export default function CommunityResultsPage() {
           </IndicatorCard>
 
           <IndicatorCard
+            section="energy"
             title="Community surplus distribution"
             description="Distribution of excess generated electricity"
             info="Shows how the community's surplus electricity is distributed between P2P energy exchanges and exports to the grid."
@@ -526,6 +500,7 @@ export default function CommunityResultsPage() {
         </div>
         {period === "annual" && (
           <IndicatorCard
+            section="energy"
             title="Monthly consumption coverage"
             description="Share of community consumption covered by each energy source in every month"
             className="chart-card"
@@ -667,6 +642,7 @@ export default function CommunityResultsPage() {
         <SectionHeading title="Economics" color={colors.ochre}/>
         <div className="economics-summary-grid">
           <IndicatorCard
+            section="economics"
             title="Community final electricity bill"
             className="bill-comparison-card"
             description={period === "annual"
@@ -675,14 +651,13 @@ export default function CommunityResultsPage() {
             value={communityFinalBill != null
               ? `${communityFinalBill.toFixed(0)} €`
               : "—"}
-            valueTone={communitySavingsTone}
             info="Community's net electricity cost accounting for grid and P2P electricity purchases minus revenue from electricity sold."
           >
             {communitySavingsPercent != null && (
               <div className="bill-savings-section">
                 <hr />
-                <strong className={`bill-savings-result is-${communitySavingsTone}`}>
-                  {communitySavingsTone === "neutral"
+                <strong className="bill-savings-result">
+                  {Math.abs(communitySavingsPercent) < 0.05
                     ? "About the same as without the community"
                     : `${Math.abs(communitySavingsPercent).toFixed(1)}% ${communitySaved < 0 ? "higher" : "lower"} than without the community`}
                 </strong>
@@ -690,17 +665,17 @@ export default function CommunityResultsPage() {
             )}
           </IndicatorCard>
           <IndicatorCard
+            section="economics"
             title="Total saved"
             description={`${periodDisplayLabel} community savings`}
             value={kpis.totalSaved?.value != null
               ? `${kpis.totalSaved.value.toFixed(0)} €`
               : "—"}
-            valueTone={getIndicatorTone(kpis.totalSaved?.value, { precision: 0 })}
             info="Savings achieved by the community compared with purchasing all consumed electricity from the grid."
           >
             <hr />
             <p className="card-description">Equivalent to the grid-only electricity costs for</p>
-            <strong className={`households-number indicator-value-${getIndicatorTone(kpis.baselinePovertyHelp?.value, { precision: 1 })}`}>
+            <strong className="households-number">
               {kpis.baselinePovertyHelp?.value != null
                 ? `${kpis.baselinePovertyHelp.value.toFixed(1)} average households`
                 : "—"}
@@ -711,6 +686,7 @@ export default function CommunityResultsPage() {
 
         {period === "annual" && (
           <IndicatorCard
+            section="economics"
             title="Monthly electricity bill comparison"
             description="Comparison of electricity costs with and without the community across each month."
             className="table-card"
@@ -781,6 +757,7 @@ export default function CommunityResultsPage() {
 
           <div className="economics-summary-grid roi-summary-grid">
             <IndicatorCard
+              section="economics"
               title="Total invested"
               description="Total investment in community energy assets"
               value={formatEuro(kpis.totalInvested?.value)}
@@ -788,18 +765,17 @@ export default function CommunityResultsPage() {
             />
 
             <IndicatorCard
+              section="economics"
               title="Community profit"
               description={`Return on the community investment for ${periodReference}`}
               value={kpis.profit?.value != null
                 ? `${(kpis.profit.value * 100).toFixed(1)} %`
                 : "—"}
-              valueTone={getIndicatorTone(kpis.profit?.value == null
-                ? null
-                : kpis.profit.value * 100, { precision: 1 })}
               info="Indicates how much financial benefit the community generates from its investment."
             />
 
             <IndicatorCard
+              section="economics"
               title="Community payback time"
               description="Estimated time to recover the community investment"
               value={kpis.payback?.value != null
@@ -817,15 +793,12 @@ export default function CommunityResultsPage() {
         <SectionHeading title="Social" color={colors.purple} />
         <div className="two-cards">
           <IndicatorCard
+            section="social"
             title="Fairness index"
             description="Equity in the distribution of community savings"
             value={kpis.fairness?.value != null
               ? kpis.fairness.value.toFixed(3)
               : "—"}
-            valueTone={getIndicatorTone(kpis.fairness?.value, {
-              neutralAt: 0.5,
-              precision: 3
-            })}
             info={
               <>
                 <p>Compares members' savings per unit of generation.</p>
@@ -834,17 +807,12 @@ export default function CommunityResultsPage() {
             }
           />
           <IndicatorCard
+            section="social"
             title="Self-sufficiency gap"
             description="Difference between the most and least self-sufficient participant"
             value={kpis.selfSufficiencyGap?.value != null
               ? `${(kpis.selfSufficiencyGap.value * 100).toFixed(1)} pp`
               : "—"}
-            valueTone={getIndicatorTone(kpis.selfSufficiencyGap?.value == null
-              ? null
-              : kpis.selfSufficiencyGap.value * 100, {
-              direction: "lower",
-              precision: 1
-            })}
             info="Gap between the highest and lowest member self-sufficiency. Smaller gaps mean more similar self-sufficiency."
           />
         </div>
@@ -854,6 +822,7 @@ export default function CommunityResultsPage() {
         <SectionHeading title="Environmental" color={colors.blue} />
         <div className="two-cards">
           <IndicatorCard
+            section="environmental"
             title="Avoided emissions"
             description={period === "annual"
               ? "Net annual CO₂-equivalent reduction"
@@ -862,17 +831,15 @@ export default function CommunityResultsPage() {
             value={kpis.avoidedEmissions?.value != null
               ? `${kpis.avoidedEmissions.value.toFixed(0)} kg`
               : "—"}
-            valueTone={getIndicatorTone(kpis.avoidedEmissions?.value, { precision: 0 })}
             info={
               <>
                 <p>Net CO₂-equivalent emissions avoided after accounting for grid imports and equipment emissions.</p>
               </>
-            }
-          >
+            }>
             <div className="emissions-explainer">
-              <strong className={`indicator-value-${emissionsReductionTone}`}> {emissionsReductionPercent != null
+              <strong> {emissionsReductionPercent != null
                 ? `${emissionsReductionPercent.toFixed(0)}% fewer emissions than without the community.`
-                : "—"}  
+                : "—"}
               </strong>
               <p>  {kpis.environmentalImpact?.value != null
                 ? `Equivalent to ${(kpis.environmentalImpact.value * 100).toFixed(0)}% of the emissions generated by purchasing all energy from the grid.`
@@ -881,6 +848,7 @@ export default function CommunityResultsPage() {
             </div>
           </IndicatorCard>
           <IndicatorCard
+            section="environmental"
             title="Carbon payback time"
             description="Time to offset installation emissions"
             value={kpis.carbonPaybackTime?.value != null

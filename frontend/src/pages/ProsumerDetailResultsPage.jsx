@@ -44,9 +44,9 @@ const EXTRA_INDICATORS = {
     }
   ],
   economic: [
-    { key: "profitPv", title: "PV return", description: "Return on photovoltaic investment", info: "Photovoltaic profit divided by photovoltaic investment.", signed: true },
-    { key: "profitWt", title: "Wind return", description: "Return on wind investment", info: "Wind profit divided by wind investment.", signed: true },
-    { key: "profitBattery", title: "Battery return", description: "Return on battery investment", info: "Battery profit divided by battery investment.", signed: true },
+    { key: "profitPv", title: "PV return", description: "Return on photovoltaic investment", info: "Photovoltaic profit divided by photovoltaic investment." },
+    { key: "profitWt", title: "Wind return", description: "Return on wind investment", info: "Wind profit divided by wind investment." },
+    { key: "profitBattery", title: "Battery return", description: "Return on battery investment", info: "Battery profit divided by battery investment." },
     { key: "paybackPv", title: "PV payback time", description: "Estimated time to recover photovoltaic investment", info: "Photovoltaic investment divided by photovoltaic profit." },
     { key: "paybackWt", title: "Wind payback time", description: "Estimated time to recover wind investment", info: "Wind investment divided by wind profit." },
     { key: "paybackBattery", title: "Battery payback time", description: "Estimated time to recover battery investment", info: "Battery investment divided by battery profit." }
@@ -105,20 +105,6 @@ const EXTRA_INDICATORS = {
   ]
 };
 
-function getIndicatorTone(value, {
-  direction = "higher",
-  neutralAt = 0,
-  precision = 1
-} = {}) {
-  if (!Number.isFinite(value)) return "neutral";
-
-  const difference = Number((value - neutralAt).toFixed(precision));
-  if (difference === 0) return "neutral";
-
-  const isPositive = direction === "higher" ? difference > 0 : difference < 0;
-  return isPositive ? "positive" : "negative";
-}
-
 function getCoverageShares(own, grid) {
   const ownPercent = Math.max(0, own * 100);
   const gridPercent = Math.max(0, grid * 100);
@@ -134,22 +120,18 @@ function getCoverageShares(own, grid) {
     : { own: 0, grid: 0, p2p: 0 };
 }
 
-function ExtraIndicatorCards({ indicators, kpis, period }) {
+function ExtraIndicatorCards({ indicators, kpis, period, section }) {
   return (
     <div className="prosumer-extra-card-grid">
       {indicators.map(indicator => {
         const value = kpis[indicator.key]?.value ?? null;
-        const tone = indicator.signed
-          ? getIndicatorTone(value, { precision: 1 })
-          : "neutral";
-
         return (
           <IndicatorCard
             key={indicator.key}
             title={indicator.title}
             description={indicator.description}
             value={formatKpiValue(value, indicator.key, period)}
-            valueTone={tone}
+            section={section}
             info={indicator.info}
           />
         );
@@ -267,11 +249,9 @@ export default function ProsumerDetailResultsPage() {
     ? value("finalBill") + value("saved")
     : null;
   const savingsPercent = baselineBill > 0 ? value("saved") / baselineBill * 100 : null;
-  const savingsTone = getIndicatorTone(savingsPercent, { precision: 1 });
   const emissionsReductionPercent = value("environmentalImpact") == null
     ? null
     : (1 - value("environmentalImpact")) * 100;
-  const emissionsReductionTone = getIndicatorTone(emissionsReductionPercent, { precision: 0 });
   const displayPeriods = resultPeriods.filter(item => item.id !== "annual");
   const coverageData = displayPeriods.map(item => {
     const itemKpis = item.prosumers?.[selectedProsumer] ?? {};
@@ -401,7 +381,7 @@ export default function ProsumerDetailResultsPage() {
               title="Total saved"
               description={`${period === "annual" ? "Annual" : selectedPeriodLabel} savings from community participation`}
               value={formatKpiValue(value("saved"), "saved", period)}
-              valueTone={getIndicatorTone(value("saved"), { precision: 0 })}
+              section="economics"
               className="summary-card"
               info="Savings compared with purchasing all consumed electricity from the grid."
             />
@@ -409,9 +389,7 @@ export default function ProsumerDetailResultsPage() {
               title="Self-sufficiency"
               description="Your demand covered by your own resources"
               value={formatKpiValue(value("selfSufficiency"), "selfSufficiency", period)}
-              valueTone={getIndicatorTone(value("selfSufficiency") == null
-                ? null
-                : value("selfSufficiency") * 100, { neutralAt: 50, precision: 1 })}
+              section="energy"
               className="summary-card"
               info="Share of your electricity demand covered by your own generation, either directly or through battery storage."
             />
@@ -419,9 +397,7 @@ export default function ProsumerDetailResultsPage() {
               title="Bill reduction"
               description="Reduction compared with grid-only electricity costs"
               value={formatKpiValue(value("billReduction"), "billReduction", period)}
-              valueTone={getIndicatorTone(value("billReduction") == null
-                ? null
-                : value("billReduction") * 100, { precision: 1 })}
+              section="economics"
               className="summary-card"
               info="Difference between the estimated cost of buying all your electricity from the grid and your final bill."
             />
@@ -431,7 +407,7 @@ export default function ProsumerDetailResultsPage() {
                 ? "Net annual CO₂-equivalent reduction"
                 : `Net CO₂-equivalent reduction in ${selectedPeriodLabel || "the selected period"}`}
               value={formatKpiValue(value("avoidedEmissions"), "avoidedEmissions", period)}
-              valueTone={getIndicatorTone(value("avoidedEmissions"), { precision: 0 })}
+              section="environmental"
               className="summary-card"
               info="Net emissions avoided after accounting for your grid imports and the emissions associated with your equipment."
             />
@@ -442,6 +418,7 @@ export default function ProsumerDetailResultsPage() {
             <div className="energy-cards">
               <IndicatorCard
                 title="Your electricity consumption"
+                section="energy"
                 description={`${selectedPeriodLabel} demand covered by each energy source`}
                 info="Shows how your electricity demand is met by your own resources, grid imports and P2P energy received."
               >
@@ -480,11 +457,9 @@ export default function ProsumerDetailResultsPage() {
 
               <IndicatorCard
                 title="Direct self-consumption"
+                section="energy"
                 description="Your generation consumed directly"
                 value={formatKpiValue(value("selfConsumption"), "selfConsumption", period)}
-                valueTone={getIndicatorTone(value("selfConsumption") == null
-                  ? null
-                  : value("selfConsumption") * 100, { neutralAt: 50, precision: 1 })}
                 className="direct-self-consumption-card"
                 info="Share of your generated energy consumed directly, without battery storage. Higher values mean more of your generation is used immediately."
               >
@@ -499,6 +474,7 @@ export default function ProsumerDetailResultsPage() {
 
               <IndicatorCard
                 title="Your surplus distribution"
+                section="energy"
                 description="Distribution of your excess generated electricity"
                 info="Shows how your surplus electricity is divided between P2P exchanges and exports to the grid."
               >
@@ -545,6 +521,7 @@ export default function ProsumerDetailResultsPage() {
               indicators={EXTRA_INDICATORS.energy}
               kpis={kpis}
               period={period}
+              section="energy"
             />
 
             {period === "annual" && (
@@ -552,6 +529,7 @@ export default function ProsumerDetailResultsPage() {
                 title={`${periodType === "season" ? "Seasonal" : "Monthly"} consumption coverage`}
                 description="Share of your demand covered by each energy source in every period"
                 className="chart-card"
+                section="energy"
                 info="Bar height shows your total demand in each period; segments show the share met by your own resources, grid imports and P2P. Hover for kWh and percentages; click a period to see total consumption."
               >
                 <div className="chart-heading">
@@ -658,15 +636,15 @@ export default function ProsumerDetailResultsPage() {
                   ? "Your total net electricity cost over the year"
                   : `Your total net electricity cost in ${selectedPeriodLabel || "the selected period"}`}
                 value={formatKpiValue(value("finalBill"), "finalBill", period)}
-                valueTone={savingsTone}
                 className="bill-comparison-card"
+                section="economics"
                 info="Your net electricity cost after accounting for grid and P2P purchases and revenue from energy sold."
               >
                 {savingsPercent != null && (
                   <div className="bill-savings-section">
                     <hr />
-                    <strong className={`bill-savings-result is-${savingsTone}`}>
-                      {savingsTone === "neutral"
+                    <strong className="bill-savings-result">
+                      {Math.abs(savingsPercent) < 0.05
                         ? "About the same as buying all electricity from the grid"
                         : `${Math.abs(savingsPercent).toFixed(1)}% ${value("saved") < 0 ? "higher" : "lower"} than without the community`}
                     </strong>
@@ -675,9 +653,9 @@ export default function ProsumerDetailResultsPage() {
               </IndicatorCard>
               <IndicatorCard
                 title="Savings from community participation"
+                section="economics"
                 description={`${period === "annual" ? "Annual" : selectedPeriodLabel} savings compared with grid-only electricity`}
                 value={formatKpiValue(value("saved"), "saved", period)}
-                valueTone={getIndicatorTone(value("saved"), { precision: 0 })}
                 info="Savings achieved compared with purchasing all your consumed electricity from the grid."
               />
             </div>
@@ -687,6 +665,7 @@ export default function ProsumerDetailResultsPage() {
                 title={`${periodType === "season" ? "Seasonal" : "Monthly"} electricity bill comparison`}
                 description="Your estimated electricity costs with and without the community across each period."
                 className="table-card"
+                section="economics"
                 info="Compares the estimated grid-only cost with your final bill under the community energy-sharing model."
               >
                 <div className="table-scroll">
@@ -730,21 +709,21 @@ export default function ProsumerDetailResultsPage() {
               <div className="economics-summary-grid roi-summary-grid">
                 <IndicatorCard
                   title="Total invested"
+                section="economics"
                   description="Investment in your share of community energy assets"
                   value={formatKpiValue(value("totalInvested"), "totalInvested", period)}
                   info="Upfront cost of generation and battery capacity allocated to you."
                 />
                 <IndicatorCard
                   title="Your profit (ROI)"
+                section="economics"
                   description={`Return on your investment for ${periodReference}`}
                   value={formatKpiValue(value("annualProfit"), "annualProfit", period)}
-                  valueTone={getIndicatorTone(value("annualProfit") == null
-                    ? null
-                    : value("annualProfit") * 100, { precision: 1 })}
                   info="Your profit for the selected period divided by your total investment."
                 />
                 <IndicatorCard
                   title="Your payback time"
+                section="economics"
                   description="Estimated time to recover your investment"
                   value={formatKpiValue(value("payback"), "payback", period)}
                   info="Your total investment divided by the profit generated over the selected period."
@@ -759,6 +738,7 @@ export default function ProsumerDetailResultsPage() {
               indicators={EXTRA_INDICATORS.social}
               kpis={kpis}
               period={period}
+              section="social"
             />
           </section>
 
@@ -771,12 +751,12 @@ export default function ProsumerDetailResultsPage() {
                   ? "Net annual CO₂-equivalent reduction"
                   : `Net CO₂-equivalent reduction in ${selectedPeriodLabel || "the selected period"}`}
                 className="emissions-card"
+                section="environmental"
                 value={formatKpiValue(value("avoidedEmissions"), "avoidedEmissions", period)}
-                valueTone={getIndicatorTone(value("avoidedEmissions"), { precision: 0 })}
                 info="Net emissions avoided after accounting for your grid imports and the emissions associated with your equipment."
               >
                 <div className="emissions-explainer">
-                  <strong className={`indicator-value-${emissionsReductionTone}`}>
+                  <strong>
                     {emissionsReductionPercent != null
                       ? `${emissionsReductionPercent.toFixed(0)}% fewer emissions than without the community.`
                       : "—"}
@@ -790,6 +770,7 @@ export default function ProsumerDetailResultsPage() {
               </IndicatorCard>
               <IndicatorCard
                 title="Carbon payback time"
+                section="environmental"
                 description="Time for your carbon savings to offset installation emissions"
                 value={formatKpiValue(value("carbonPayback"), "carbonPayback", period)}
                 info="Estimates how long it takes for your avoided emissions to offset the initial emissions from your equipment."
